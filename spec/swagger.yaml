@@ -1,0 +1,221 @@
+openapi: 3.0.0
+info:
+  version: '1'
+  title: Todo List
+  description: 'Awesome Todo List'
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/roxyproxy/TodoList/1
+  - description: Todo List Server
+    url: http://localhost:3025
+paths:
+  /todo/{todoId}:
+    get:
+      description: Returns todo_ by ID
+      parameters:
+        - name: todoId
+          in: path
+          required: true
+          description: The ID of the todo_ item
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Todo item is not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+    delete:
+      description: Delete todo_ item
+      parameters:
+        - name: todoId
+          in: path
+          required: true
+          description: The ID of the todo_ item
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Todo item is not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+    put:
+      description: Update todo_ item
+      parameters:
+        - name: todoId
+          in: path
+          required: true
+          description: The ID of the todo_ item
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                date:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Todo item is not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /todo:
+    get:
+      summary: Returns all or filtered todo_ items
+      parameters:
+        - name: fromDate
+          in: query
+          description: Filter. Retruns todo_ items from the date specified.
+          schema:
+            type: string
+        - name: toDate
+          in: query
+          description: Filter. Retruns todo_ items to the date specified.
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter. Returns todo_ items with provided status.
+          schema:
+            type: string
+            enum: [new, done, deleted]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Todo'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+    post:
+      description: Add new todo_ item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                date:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+components:
+  schemas:
+    Todo:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        date:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [new, done, deleted]
