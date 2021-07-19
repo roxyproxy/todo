@@ -6,11 +6,11 @@ import (
 )
 
 type Storage interface {
-	AddItem(item model.TodoItem) (id int64)
-	DeleteItem(id int64)
-	UpdateItem(item model.TodoItem)
-	GetItem(id int64) model.TodoItem
-	GetAllItems(filter TodoFilter) []model.TodoItem
+	AddItem(item model.TodoItem) (id string, err error)
+	DeleteItem(id string) error
+	UpdateItem(item model.TodoItem) error
+	GetItem(id string) (model.TodoItem, error)
+	GetAllItems(filter TodoFilter) ([]model.TodoItem, error)
 }
 
 type TodoFilter struct {

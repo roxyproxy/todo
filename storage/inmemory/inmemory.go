@@ -12,6 +12,10 @@ type InMemory struct {
 	todoItems map[string]model.TodoItem
 }
 
+func NewInMemoryStorage() *InMemory {
+	return &InMemory{map[string]model.TodoItem{}}
+}
+
 func (i *InMemory) GetItem(id string) (model.TodoItem, error) {
 	todo := i.todoItems[id]
 	return todo, nil
