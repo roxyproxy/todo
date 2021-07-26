@@ -8,3 +8,7 @@ type TodoItem struct {
 	Date   time.Time //time.RFC3339
 	Status string
 }
+
+type TodoId struct {
+	Id string
+}

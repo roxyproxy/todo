@@ -5,7 +5,7 @@ import (
 )
 
 type Route struct {
-	Method  string
-	Path    string
-	Handler http.HandlerFunc
+	Method string
+	Path   string
+	Handlr http.HandlerFunc
 }

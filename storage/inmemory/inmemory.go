@@ -34,14 +34,15 @@ func (i *InMemory) DeleteItem(id string) error {
 func (i *InMemory) AddItem(item model.TodoItem) (string, error) {
 	u := uuid.NewV4().String()
 	item.Id = u
+	if item.Status == "" {
+		item.Status = "new"
+	}
 	i.todoItems[u] = item
-
 	return u, nil
 }
 
 func (i *InMemory) GetAllItems(filter storage.TodoFilter) ([]model.TodoItem, error) {
 	arr := make([]model.TodoItem, 0)
-
 	for _, value := range i.todoItems {
 		if filter == (storage.TodoFilter{}) {
 			arr = append(arr, value)
@@ -50,15 +51,12 @@ func (i *InMemory) GetAllItems(filter storage.TodoFilter) ([]model.TodoItem, err
 				arr = append(arr, value)
 			}
 		}
-
 	}
-
 	return arr, nil
 }
 
 func filtered(filter storage.TodoFilter, t model.TodoItem) bool {
 	return statusOk(filter.Status, t.Status) && toDateOk(filter.ToDate, t.Date) && fromDateOk(filter.FromDate, t.Date)
-
 }
 
 func statusOk(status string, s string) bool {
