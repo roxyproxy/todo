@@ -2,54 +2,51 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"time"
 	"todo/model"
 	"todo/storage"
+
+	"github.com/go-chi/chi"
+	"github.com/golang-jwt/jwt"
+	"golang.org/x/crypto/bcrypt"
 )
+
+const secretKey = "verysecretkey"
 
 type TodoServer struct {
 	storage storage.Storage
-	routes  []model.Route
-	http.Handler
+	Serve   http.Handler
 }
 
 func NewTodoServer(storage storage.Storage) *TodoServer {
 	t := new(TodoServer)
 	t.storage = storage
-	t.routes = []model.Route{
-		{"GET", "/todo", t.getAllItemsHandler},
-		//{"GET", "/todo?([^/]+)$", t.getFilteredItemsHandler},
-		{"POST", "/todo", t.addItemHandler},
-		{"GET", "/todo/([^/]+)", t.getItemHandler},
-		{"DELETE", "/todo/([^/]+)", t.deleteItemHandler},
-		{"PUT", "/todo/([^/]+)", t.updateItemHandler},
-	}
+	s := chi.NewRouter()
+
+	s.Get("/todos", t.getAllItemsHandler)
+	s.Post("/todos", t.addItemHandler)
+	s.Get("/todos/{todoId}", t.getItemHandler)
+	s.Delete("/todos/{todoId}", t.deleteItemHandler)
+	s.Put("/todos/{todoId}", t.updateItemHandler)
+
+	s.Get("/users", t.getAllUsersHandler)
+	s.Post("/users", t.addUserHandler)
+	s.Get("/users/{userId}", t.getUserHandler)
+	s.Delete("/users/{userId}", t.deleteUserHandler)
+	s.Put("/users/{userId}", t.updateUserHandler)
+
+	s.Post("/user/login", t.loginUserHandler)
+
+	t.Serve = s
 	return t
 }
 
-func (t *TodoServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	for _, route := range t.routes {
-		re := regexp.MustCompile("^" + route.Path + "$")
-		matches := re.FindStringSubmatch(r.URL.Path)
-		if len(matches) > 0 && route.Method == r.Method {
-			if len(matches) == 2 {
-				q := r.URL.Query()
-				q.Add("id", matches[1])
-				r.URL.RawQuery = q.Encode()
-			}
-			w.Header().Set("Content-Type", "application/json")
-			route.Handlr(w, r)
-			return
-		}
-	}
-	http.NotFound(w, r)
-}
-
-// handlers
+// todos handlers
 func (t *TodoServer) getAllItemsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	filter := storage.TodoFilter{}
 	if val, ok := r.URL.Query()["status"]; ok {
 		filter.Status = val[0]
@@ -78,32 +75,11 @@ func (t *TodoServer) getAllItemsHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	json.NewEncoder(w).Encode(items)
-}
 
-func (t *TodoServer) getFilteredItemsHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("getFilteredItemsHandler")
-	/*status := r.URL.Query()["Status"][0]
-	fromDate, err := time.Parse(time.RFC3339, r.URL.Query()["fromDate"][0])
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-	toDate, err := time.Parse(time.RFC3339, r.URL.Query()["toDate"][0])
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-	*/
-	filter := storage.TodoFilter{Status: "Done"}
-	items, err := t.storage.GetAllItems(filter)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	json.NewEncoder(w).Encode(items)
 }
 
 func (t *TodoServer) addItemHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	todo := model.TodoItem{}
 	err := json.NewDecoder(r.Body).Decode(&todo)
 
@@ -122,7 +98,8 @@ func (t *TodoServer) addItemHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *TodoServer) getItemHandler(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query()["id"][0]
+	w.Header().Set("Content-Type", "application/json")
+	id := chi.URLParam(r, "todoId")
 	todo, err := t.storage.GetItem(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -136,7 +113,8 @@ func (t *TodoServer) getItemHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *TodoServer) deleteItemHandler(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query()["id"][0]
+	w.Header().Set("Content-Type", "application/json")
+	id := chi.URLParam(r, "todoId")
 	todo, err := t.storage.GetItem(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -153,7 +131,8 @@ func (t *TodoServer) deleteItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (t *TodoServer) updateItemHandler(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query()["id"][0]
+	w.Header().Set("Content-Type", "application/json")
+	id := chi.URLParam(r, "todoId")
 	todo, err := t.storage.GetItem(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -173,20 +152,146 @@ func (t *TodoServer) updateItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//matching
-func match(path string, pattern string) bool {
-	re := regexp.MustCompile("^" + pattern + "$")
-	matches := re.FindStringSubmatch(path)
-	if len(matches) > 0 {
-		return true
+// users handlers
+func (t *TodoServer) getAllUsersHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	users, err := t.storage.GetAllUsers(storage.UserFilter{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-	return false
+	json.NewEncoder(w).Encode(users)
 }
-func getMatchParams(path string, pattern string) []string {
-	re := regexp.MustCompile("^" + pattern + "$")
-	matches := re.FindStringSubmatch(path)
-	if len(matches) > 0 {
-		return matches[1:]
+
+func (t *TodoServer) addUserHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	user := model.User{}
+	err := json.NewDecoder(r.Body).Decode(&user)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-	return []string{}
+
+	user.Password, err = hashPassword(user.Password)
+
+	id, err := t.storage.AddUser(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	j := model.TodoId{Id: id}
+	json.NewEncoder(w).Encode(j)
+}
+
+func (t *TodoServer) getUserHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id := chi.URLParam(r, "userId")
+	user, err := t.storage.GetUser(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if user.Id == "" {
+		http.NotFound(w, r)
+		return
+	}
+	json.NewEncoder(w).Encode(user)
+}
+
+func (t *TodoServer) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id := chi.URLParam(r, "userId")
+	user, err := t.storage.GetUser(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if user.Id == "" {
+		http.NotFound(w, r)
+		return
+	}
+	err = t.storage.DeleteUser(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+}
+func (t *TodoServer) updateUserHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id := chi.URLParam(r, "userId")
+	user, err := t.storage.GetUser(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if user.Id == "" {
+		http.NotFound(w, r)
+		return
+	}
+	user = model.User{}
+	json.NewDecoder(r.Body).Decode(&user)
+	user.Id = id
+	err = t.storage.UpdateUser(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+}
+
+func (t *TodoServer) loginUserHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	credentials := model.Credentials{}
+	err := json.NewDecoder(r.Body).Decode(&credentials)
+
+	userId, err := t.authenticateUser(credentials)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	token, err := generateToken(userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	json.NewEncoder(w).Encode(token)
+
+	fmt.Println(t.storage)
+}
+
+func (t *TodoServer) authenticateUser(credentials model.Credentials) (string, error) {
+	filter := storage.UserFilter{}
+	filter.UserName = credentials.UserName
+
+	users, _ := t.storage.GetAllUsers(filter)
+
+	if len(users) == 0 || checkPasswordHash(credentials.Password, users[0].Password) {
+		return "", errors.New("Invalid user credentials")
+	}
+	return users[0].Id, nil
+}
+
+func generateToken(id string) (tokenString string, err error) {
+	claims := jwt.MapClaims{}
+	claims["userid"] = id
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err = token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
+}
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func checkPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }

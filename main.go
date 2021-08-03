@@ -9,5 +9,5 @@ import (
 func main() {
 	server := server.NewTodoServer(inmemory.NewInMemoryStorage())
 
-	http.ListenAndServe(":5008", server)
+	http.ListenAndServe(":5009", server.Serve)
 }

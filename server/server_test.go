@@ -28,11 +28,11 @@ func TestServerWithMock(t *testing.T) {
 		m.EXPECT().GetAllItems(storage.TodoFilter{}).Return([]model.TodoItem{}, nil)
 
 		response := httptest.NewRecorder()
-		request, _ := http.NewRequest(http.MethodGet, "/todo", nil)
-		server.ServeHTTP(response, request)
+		request, _ := http.NewRequest(http.MethodGet, "/todos", nil)
+		server.Serve.ServeHTTP(response, request)
 
 		assert.Equal(t, response.Code, http.StatusOK)
-		assert.Equal(t, response.Header().Get("Content-Type"), "application/json")
+		assert.Equal(t, "application/json", response.Header().Get("Content-Type"))
 		assert.JSONEq(t, "[]", response.Body.String())
 	})
 
@@ -46,8 +46,8 @@ func TestServerWithMock(t *testing.T) {
 		m.EXPECT().GetAllItems(filter).Return(todoItems, nil)
 
 		response := httptest.NewRecorder()
-		request, _ := http.NewRequest(http.MethodGet, "/todo?status=done", nil)
-		server.ServeHTTP(response, request)
+		request, _ := http.NewRequest(http.MethodGet, "/todos?status=done", nil)
+		server.Serve.ServeHTTP(response, request)
 
 		assert.Equal(t, response.Code, http.StatusOK)
 		assert.Equal(t, response.Header().Get("Content-Type"), "application/json")
@@ -62,9 +62,9 @@ func TestServerWithMock(t *testing.T) {
 		todoJson, _ := json.Marshal(&todo)
 		todoIdJson, _ := json.Marshal(&todoId)
 
-		request, _ := http.NewRequest(http.MethodPost, "/todo", bytes.NewBuffer(todoJson))
+		request, _ := http.NewRequest(http.MethodPost, "/todos", bytes.NewBuffer(todoJson))
 		response := httptest.NewRecorder()
-		server.ServeHTTP(response, request)
+		server.Serve.ServeHTTP(response, request)
 
 		assert.Equal(t, response.Code, http.StatusOK)
 		assert.Equal(t, "application/json", response.Header().Get("Content-Type"))
@@ -112,19 +112,11 @@ func TestServer(t *testing.T) {
 		todoId := model.TodoId{}
 		json.NewDecoder(resp.Body).Decode(&todoId)
 
-		v := url.Values{}
-		v.Set("id", "test")
-		assert.HTTPStatusCode(server.getItemHandler, "DELETE", "/todo", v, 404)
-		v.Set("id", todoId.Id)
-		assert.HTTPStatusCode(server.getItemHandler, "DELETE", "/todo", v, 200)
-
-		req, _ := http.NewRequest(http.MethodDelete, "/todo/"+todoId.Id, nil)
+		req, _ := http.NewRequest(http.MethodDelete, "/todos/"+todoId.Id, nil)
 		res := httptest.NewRecorder()
-		server.ServeHTTP(res, req)
+		server.Serve.ServeHTTP(res, req)
 
 		assertStatus(t, res.Code, http.StatusOK)
-
-		//todo get item
 	})
 
 	t.Run("update item", func(t *testing.T) {
@@ -138,37 +130,31 @@ func TestServer(t *testing.T) {
 		todoId := model.TodoId{}
 		json.NewDecoder(resp.Body).Decode(&todoId)
 
-		v := url.Values{}
-		v.Set("id", "test")
-		assert.HTTPStatusCode(server.updateItemHandler, "PUT", "/todo", v, 404)
-
-		req, _ := http.NewRequest(http.MethodPut, "/todo/"+todoId.Id, bytes.NewBuffer(j2))
+		req, _ := http.NewRequest(http.MethodPut, "/todos/"+todoId.Id, bytes.NewBuffer(j2))
 		resp = httptest.NewRecorder()
-		server.ServeHTTP(resp, req)
+		server.Serve.ServeHTTP(resp, req)
 		json.NewDecoder(resp.Body).Decode(&todo3)
 
 		assertStatus(t, resp.Code, http.StatusOK)
 
-		// todo getitem
-		//assertResponseBody(t, todo3, todo2)
-
 		DeleteTodo(server, todoId.Id)
+
 	})
 
 	t.Run("get all items", func(t *testing.T) {
 		todo := model.TodoItem{Name: "test12"}
 		j, _ := json.Marshal(&todo)
 		resp := httptest.NewRecorder()
-		req, _ := http.NewRequest(http.MethodPost, "/todo", bytes.NewBuffer(j))
-		server.ServeHTTP(resp, req)
+		req, _ := http.NewRequest(http.MethodPost, "/todos", bytes.NewBuffer(j))
+		server.Serve.ServeHTTP(resp, req)
 
 		var err error
-		req, err = http.NewRequest(http.MethodGet, "/todo", nil)
+		req, err = http.NewRequest(http.MethodGet, "/todos", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		res := httptest.NewRecorder()
-		server.ServeHTTP(res, req)
+		server.Serve.ServeHTTP(res, req)
 		todoItems := []model.TodoItem{}
 
 		json.NewDecoder(res.Body).Decode(&todoItems)
@@ -193,17 +179,17 @@ func assertResponseBody(t testing.TB, got, want interface{}) {
 }
 
 func AddRequest(server *TodoServer, b []byte) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(http.MethodPost, "/todo", bytes.NewBuffer(b))
+	req, _ := http.NewRequest(http.MethodPost, "/todos", bytes.NewBuffer(b))
 	resp := httptest.NewRecorder()
-	server.ServeHTTP(resp, req)
+	server.Serve.ServeHTTP(resp, req)
 
 	return resp
 }
 
 func DeleteTodo(server *TodoServer, id string) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(http.MethodDelete, "/todo/"+id, nil)
+	req, _ := http.NewRequest(http.MethodDelete, "/todos/"+id, nil)
 	res := httptest.NewRecorder()
-	server.ServeHTTP(res, req)
+	server.Serve.ServeHTTP(res, req)
 
 	return res
 }

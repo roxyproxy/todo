@@ -11,10 +11,21 @@ type Storage interface {
 	UpdateItem(item model.TodoItem) error
 	GetItem(id string) (model.TodoItem, error)
 	GetAllItems(filter TodoFilter) ([]model.TodoItem, error)
+
+	AddUser(user model.User) (id string, err error)
+	DeleteUser(id string) error
+	UpdateUser(user model.User) error
+	GetUser(id string) (model.User, error)
+	GetAllUsers(filter UserFilter) ([]model.User, error)
+	//AuthenticateUser(credentials model.Credentials) (id string, err error)
 }
 
 type TodoFilter struct {
 	FromDate *time.Time //nil if empty
 	ToDate   *time.Time
 	Status   string
+}
+
+type UserFilter struct {
+	UserName string
 }

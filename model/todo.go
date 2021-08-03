@@ -3,12 +3,12 @@ package model
 import "time"
 
 type TodoItem struct {
-	Id     string
-	Name   string
-	Date   time.Time //time.RFC3339
-	Status string
+	Id     string    `json:"id"`
+	Name   string    `json:"name"`
+	Date   time.Time `json:"date"`
+	Status string    `json:"status"`
 }
 
 type TodoId struct {
-	Id string
+	Id string `json:"id"`
 }

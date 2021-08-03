@@ -1,19 +1,21 @@
 package inmemory
 
 import (
-	"github.com/satori/go.uuid"
 	"strings"
 	"time"
 	"todo/model"
 	"todo/storage"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 type InMemory struct {
 	todoItems map[string]model.TodoItem
+	users     map[string]model.User
 }
 
 func NewInMemoryStorage() *InMemory {
-	return &InMemory{map[string]model.TodoItem{}}
+	return &InMemory{map[string]model.TodoItem{}, map[string]model.User{}}
 }
 
 func (i *InMemory) GetItem(id string) (model.TodoItem, error) {
@@ -47,7 +49,7 @@ func (i *InMemory) GetAllItems(filter storage.TodoFilter) ([]model.TodoItem, err
 		if filter == (storage.TodoFilter{}) {
 			arr = append(arr, value)
 		} else {
-			if filtered(filter, value) {
+			if itemFiltered(filter, value) {
 				arr = append(arr, value)
 			}
 		}
@@ -55,7 +57,7 @@ func (i *InMemory) GetAllItems(filter storage.TodoFilter) ([]model.TodoItem, err
 	return arr, nil
 }
 
-func filtered(filter storage.TodoFilter, t model.TodoItem) bool {
+func itemFiltered(filter storage.TodoFilter, t model.TodoItem) bool {
 	return statusOk(filter.Status, t.Status) && toDateOk(filter.ToDate, t.Date) && fromDateOk(filter.FromDate, t.Date)
 }
 
@@ -74,6 +76,54 @@ func toDateOk(toDate *time.Time, d time.Time) bool {
 }
 func fromDateOk(fromDate *time.Time, d time.Time) bool {
 	if fromDate != nil && fromDate.After(d) {
+		return false
+	}
+	return true
+}
+
+// Users
+func (i *InMemory) GetUser(id string) (model.User, error) {
+	user := i.users[id]
+	return user, nil
+}
+
+func (i *InMemory) UpdateUser(u model.User) error {
+	i.users[u.Id] = u
+	return nil
+}
+
+func (i *InMemory) DeleteUser(id string) error {
+	delete(i.users, id)
+	return nil
+}
+
+func (i *InMemory) AddUser(user model.User) (string, error) {
+	u := uuid.NewV4().String()
+	user.Id = u
+	i.users[u] = user
+	return u, nil
+}
+
+func (i *InMemory) GetAllUsers(filter storage.UserFilter) ([]model.User, error) {
+	arr := make([]model.User, 0)
+	for _, value := range i.users {
+		if filter == (storage.UserFilter{}) {
+			arr = append(arr, value)
+		} else {
+			if userFiltered(filter, value) {
+				arr = append(arr, value)
+			}
+		}
+	}
+	return arr, nil
+}
+
+func userFiltered(filter storage.UserFilter, t model.User) bool {
+	return usernameOk(filter.UserName, t.UserName)
+}
+
+func usernameOk(username string, s string) bool {
+	if username != "" && strings.Compare(username, s) != 0 {
 		return false
 	}
 	return true
