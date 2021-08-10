@@ -17,12 +17,11 @@ type Storage interface {
 	UpdateUser(user model.User) error
 	GetUser(id string) (model.User, error)
 	GetAllUsers(filter UserFilter) ([]model.User, error)
-	//AuthenticateUser(credentials model.Credentials) (id string, err error)
 }
 
 type TodoFilter struct {
-	FromDate *time.Time //nil if empty
-	ToDate   *time.Time
+	FromDate *time.Time //nil if empty ?
+	ToDate   *time.Time //nil if empty ?
 	Status   string
 }
 

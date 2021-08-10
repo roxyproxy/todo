@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 	"todo/model"
@@ -24,13 +23,102 @@ func TestServerWithMock(t *testing.T) {
 	m := mockstore.NewMockStorage(ctrl)
 	server := NewTodoServer(m)
 
+	username := "Roxy"
+	password := "SecretPassword12!"
+	l, _ := time.LoadLocation("America/New_York")
+	location := model.CustomLocation{l}
+	credentials := model.Credentials{UserName: username, Password: password}
+	hash, err := hashPassword(password)
+	assert.NoError(t, err)
+	user := model.User{Id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+		UserName:  username,
+		FirstName: "Roxy",
+		LastName:  "Proxy",
+		Password:  hash,
+		Location:  location}
+	token, _ := generateToken(user.Id)
+
+	t.Run("test hashPassword", func(t *testing.T) {
+		_, err := hashPassword(password)
+		assert.NoError(t, err)
+	})
+
+	t.Run("test checkPassword", func(t *testing.T) {
+		hash, err := hashPassword(password)
+		assert.NoError(t, err)
+
+		ok := checkPasswordHash(password, hash)
+		assert.True(t, ok)
+	})
+
+	t.Run("test authenticate user", func(t *testing.T) {
+		users := []model.User{user}
+		m.EXPECT().GetAllUsers(storage.UserFilter{UserName: credentials.UserName}).Return(users, nil)
+
+		_, err := server.authenticateUser(credentials)
+		assert.NoError(t, err)
+	})
+
+	t.Run("test generate Token", func(t *testing.T) {
+		_, err := generateToken(user.Id)
+		assert.NoError(t, err)
+	})
+
+	t.Run("test get Token", func(t *testing.T) {
+		tkn, _ := generateToken(user.Id)
+		r, _ := http.NewRequest(http.MethodGet, "/users", nil)
+		r.Header.Set("Authorization", "Bearer "+tkn.TokenString)
+
+		got := getToken(r)
+		assert.NotEmpty(t, got)
+	})
+
+	t.Run("test login user", func(t *testing.T) {
+		users := []model.User{user}
+		m.EXPECT().GetAllUsers(storage.UserFilter{UserName: credentials.UserName}).Return(users, nil)
+
+		credentialsJson, err := json.Marshal(&credentials)
+		assert.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, "/user/login", bytes.NewBuffer(credentialsJson))
+		assert.NoError(t, err)
+
+		response := httptest.NewRecorder()
+		server.Serve.ServeHTTP(response, request)
+		assert.Equal(t, response.Code, http.StatusOK)
+		assert.Equal(t, "application/json", response.Header().Get("Content-Type"))
+	})
+
+	t.Run("get not existing item", func(t *testing.T) {
+		m.EXPECT().GetItem("123").Return(model.TodoItem{}, nil)
+
+		request, err := http.NewRequest(http.MethodGet, "/todos/123", nil)
+		assert.NoError(t, err)
+
+		request.Header.Set("Authorization", "Bearer "+token.TokenString)
+		response := httptest.NewRecorder()
+		server.Serve.ServeHTTP(response, request)
+		assert.Equal(t, http.StatusForbidden, response.Code)
+	})
+
+	t.Run("get all items unathorized", func(t *testing.T) {
+		response := httptest.NewRecorder()
+		request, err := http.NewRequest(http.MethodGet, "/todos", nil)
+		assert.NoError(t, err)
+
+		server.Serve.ServeHTTP(response, request)
+		assert.Equal(t, response.Code, http.StatusUnauthorized)
+	})
+
 	t.Run("get all items (empty)", func(t *testing.T) {
 		m.EXPECT().GetAllItems(storage.TodoFilter{}).Return([]model.TodoItem{}, nil)
 
 		response := httptest.NewRecorder()
-		request, _ := http.NewRequest(http.MethodGet, "/todos", nil)
-		server.Serve.ServeHTTP(response, request)
+		request, err := http.NewRequest(http.MethodGet, "/todos", nil)
+		assert.NoError(t, err)
 
+		request.Header.Set("Authorization", "Bearer "+token.TokenString)
+		server.Serve.ServeHTTP(response, request)
 		assert.Equal(t, response.Code, http.StatusOK)
 		assert.Equal(t, "application/json", response.Header().Get("Content-Type"))
 		assert.JSONEq(t, "[]", response.Body.String())
@@ -41,15 +129,20 @@ func TestServerWithMock(t *testing.T) {
 			{"123", "test1", time.Now(), "done"},
 			{"124", "test2", time.Now(), "done"},
 		}
-		todoItemsJson, _ := json.Marshal(&todoItems)
+		todoItemsJson, err := json.Marshal(&todoItems)
+		assert.NoError(t, err)
+
 		filter := storage.TodoFilter{Status: "done"}
+
 		m.EXPECT().GetAllItems(filter).Return(todoItems, nil)
 
 		response := httptest.NewRecorder()
-		request, _ := http.NewRequest(http.MethodGet, "/todos?status=done", nil)
-		server.Serve.ServeHTTP(response, request)
+		request, err := http.NewRequest(http.MethodGet, "/todos?status=done", nil)
+		request.Header.Set("Authorization", "Bearer "+token.TokenString)
+		assert.NoError(t, err)
 
-		assert.Equal(t, response.Code, http.StatusOK)
+		server.Serve.ServeHTTP(response, request)
+		assert.Equal(t, http.StatusOK, response.Code)
 		assert.Equal(t, response.Header().Get("Content-Type"), "application/json")
 		assert.JSONEq(t, string(todoItemsJson), response.Body.String())
 	})
@@ -59,13 +152,18 @@ func TestServerWithMock(t *testing.T) {
 		todoId := model.TodoId{Id: "123"}
 		m.EXPECT().AddItem(todo).Return("123", nil)
 
-		todoJson, _ := json.Marshal(&todo)
-		todoIdJson, _ := json.Marshal(&todoId)
+		todoJson, err := json.Marshal(&todo)
+		assert.NoError(t, err)
 
-		request, _ := http.NewRequest(http.MethodPost, "/todos", bytes.NewBuffer(todoJson))
+		todoIdJson, err := json.Marshal(&todoId)
+		assert.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, "/todos", bytes.NewBuffer(todoJson))
+		request.Header.Set("Authorization", "Bearer "+token.TokenString)
+		assert.NoError(t, err)
+
 		response := httptest.NewRecorder()
 		server.Serve.ServeHTTP(response, request)
-
 		assert.Equal(t, response.Code, http.StatusOK)
 		assert.Equal(t, "application/json", response.Header().Get("Content-Type"))
 		assert.JSONEq(t, string(todoIdJson), response.Body.String())
@@ -76,7 +174,22 @@ func TestServerWithMock(t *testing.T) {
 func TestServer(t *testing.T) {
 	storage := inmemory.NewInMemoryStorage()
 	server := NewTodoServer(storage)
-	assert := assert.New(t)
+
+	username := "Roxy"
+	password := "SecretPassword12!"
+	l, _ := time.LoadLocation("America/New_York")
+	location := model.CustomLocation{l}
+	hash, err := hashPassword(password)
+	if err != nil {
+		t.Errorf("hashPassword %+v", err)
+	}
+	user := model.User{Id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+		UserName:  username,
+		FirstName: "Roxy",
+		LastName:  "Proxy",
+		Password:  hash,
+		Location:  location}
+	token, _ := generateToken(user.Id)
 
 	t.Run("add new item", func(t *testing.T) {
 		todo := model.TodoItem{Name: "test1"}
@@ -97,22 +210,17 @@ func TestServer(t *testing.T) {
 
 	})
 
-	t.Run("get not existing item", func(t *testing.T) {
-		v := url.Values{}
-		v.Set("id", "test")
-		assert.HTTPStatusCode(server.getItemHandler, "GET", "/todo", v, 404)
-	})
-
 	t.Run("delete item", func(t *testing.T) {
 		todo := model.TodoItem{Name: "test1"}
 		j, _ := json.Marshal(&todo)
 
 		resp := AddRequest(server, j)
-
 		todoId := model.TodoId{}
 		json.NewDecoder(resp.Body).Decode(&todoId)
 
 		req, _ := http.NewRequest(http.MethodDelete, "/todos/"+todoId.Id, nil)
+		req.Header.Set("Authorization", "Bearer "+token.TokenString)
+
 		res := httptest.NewRecorder()
 		server.Serve.ServeHTTP(res, req)
 
@@ -131,6 +239,8 @@ func TestServer(t *testing.T) {
 		json.NewDecoder(resp.Body).Decode(&todoId)
 
 		req, _ := http.NewRequest(http.MethodPut, "/todos/"+todoId.Id, bytes.NewBuffer(j2))
+		req.Header.Set("Authorization", "Bearer "+token.TokenString)
+
 		resp = httptest.NewRecorder()
 		server.Serve.ServeHTTP(resp, req)
 		json.NewDecoder(resp.Body).Decode(&todo3)
@@ -146,10 +256,14 @@ func TestServer(t *testing.T) {
 		j, _ := json.Marshal(&todo)
 		resp := httptest.NewRecorder()
 		req, _ := http.NewRequest(http.MethodPost, "/todos", bytes.NewBuffer(j))
+		req.Header.Set("Authorization", "Bearer "+token.TokenString)
+
 		server.Serve.ServeHTTP(resp, req)
 
 		var err error
 		req, err = http.NewRequest(http.MethodGet, "/todos", nil)
+		req.Header.Set("Authorization", "Bearer "+token.TokenString)
+
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -179,7 +293,9 @@ func assertResponseBody(t testing.TB, got, want interface{}) {
 }
 
 func AddRequest(server *TodoServer, b []byte) *httptest.ResponseRecorder {
+	token, _ := generateToken("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 	req, _ := http.NewRequest(http.MethodPost, "/todos", bytes.NewBuffer(b))
+	req.Header.Set("Authorization", "Bearer "+token.TokenString)
 	resp := httptest.NewRecorder()
 	server.Serve.ServeHTTP(resp, req)
 
@@ -187,7 +303,10 @@ func AddRequest(server *TodoServer, b []byte) *httptest.ResponseRecorder {
 }
 
 func DeleteTodo(server *TodoServer, id string) *httptest.ResponseRecorder {
+	token, _ := generateToken("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 	req, _ := http.NewRequest(http.MethodDelete, "/todos/"+id, nil)
+	req.Header.Set("Authorization", "Bearer "+token.TokenString)
+
 	res := httptest.NewRecorder()
 	server.Serve.ServeHTTP(res, req)
 
