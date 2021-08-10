@@ -11,7 +11,6 @@ import (
 
 // todos handlers
 func (t *TodoServer) getAllItemsHandler(w http.ResponseWriter, r *http.Request) {
-	//w.Header().Set("Content-Type", "application/json")
 	filter := storage.TodoFilter{}
 	if val, ok := r.URL.Query()["status"]; ok {
 		filter.Status = val[0]
@@ -44,7 +43,6 @@ func (t *TodoServer) getAllItemsHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (t *TodoServer) addItemHandler(w http.ResponseWriter, r *http.Request) {
-	//w.Header().Set("Content-Type", "application/json")
 	todo := model.TodoItem{}
 	err := json.NewDecoder(r.Body).Decode(&todo)
 
@@ -63,7 +61,6 @@ func (t *TodoServer) addItemHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *TodoServer) getItemHandler(w http.ResponseWriter, r *http.Request) {
-	//w.Header().Set("Content-Type", "application/json")
 	id := chi.URLParam(r, "todoId")
 	todo, err := t.storage.GetItem(id)
 	if err != nil {
@@ -78,7 +75,6 @@ func (t *TodoServer) getItemHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *TodoServer) deleteItemHandler(w http.ResponseWriter, r *http.Request) {
-	//w.Header().Set("Content-Type", "application/json")
 	id := chi.URLParam(r, "todoId")
 	todo, err := t.storage.GetItem(id)
 	if err != nil {
@@ -96,7 +92,6 @@ func (t *TodoServer) deleteItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (t *TodoServer) updateItemHandler(w http.ResponseWriter, r *http.Request) {
-	//w.Header().Set("Content-Type", "application/json")
 	id := chi.URLParam(r, "todoId")
 	todo, err := t.storage.GetItem(id)
 	if err != nil {

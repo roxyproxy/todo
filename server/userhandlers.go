@@ -15,8 +15,12 @@ import (
 // users handlers
 func (t *TodoServer) getAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	//userid := getUserFromContext(r)
+	filter := storage.UserFilter{}
+	if val, ok := r.URL.Query()["username"]; ok {
+		filter.UserName = val[0]
+	}
 
-	users, err := t.storage.GetAllUsers(storage.UserFilter{})
+	users, err := t.storage.GetAllUsers(filter)
 	if err != nil {
 		//t.handleError(err, w)  do log, do error cast,
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -26,15 +30,16 @@ func (t *TodoServer) getAllUsersHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (t *TodoServer) addUserHandler(w http.ResponseWriter, r *http.Request) {
-	user := model.User{}
-	err := json.NewDecoder(r.Body).Decode(&user)
+	credentials := model.Credentials{}
+	err := json.NewDecoder(r.Body).Decode(&credentials)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	user.Password, err = hashPassword(user.Password)
+	user := model.User{UserName: credentials.UserName}
+	user.Password, err = hashPassword(credentials.Password)
 
 	id, err := t.storage.AddUser(user)
 	if err != nil {

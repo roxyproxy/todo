@@ -18,5 +18,5 @@ func main() {
 
 	server := server.NewTodoServer(inmemory.NewInMemoryStorage(), *config)
 
-	http.ListenAndServe(":5001", server.Serve)
+	http.ListenAndServe(":5002", server.Serve)
 }

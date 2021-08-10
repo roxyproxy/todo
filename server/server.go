@@ -20,19 +20,19 @@ func NewTodoServer(storage storage.Storage, c config.Config) *TodoServer {
 	t.config = c
 	s := chi.NewRouter()
 
-	s.Get("/todos", Chain(t.getAllItemsHandler, SetContentType(), Authorize(), Log()))
-	s.Post("/todos", Chain(t.addItemHandler, SetContentType(), Authorize(), Log()))
-	s.Get("/todos/{todoId}", Chain(t.getItemHandler, SetContentType(), Authorize(), Log()))
-	s.Delete("/todos/{todoId}", Chain(t.deleteItemHandler, SetContentType(), Authorize(), Log()))
-	s.Put("/todos/{todoId}", Chain(t.updateItemHandler, SetContentType(), Authorize(), Log()))
+	s.Get("/todos", Chain(t.getAllItemsHandler, t.SetContentType(), t.Authorize(), t.Log()))
+	s.Post("/todos", Chain(t.addItemHandler, t.SetContentType(), t.Authorize(), t.Log()))
+	s.Get("/todos/{todoId}", Chain(t.getItemHandler, t.SetContentType(), t.Authorize(), t.Log()))
+	s.Delete("/todos/{todoId}", Chain(t.deleteItemHandler, t.SetContentType(), t.Authorize(), t.Log()))
+	s.Put("/todos/{todoId}", Chain(t.updateItemHandler, t.SetContentType(), t.Authorize(), t.Log()))
 
-	s.Get("/users", Chain(t.getAllUsersHandler, SetContentType(), Authorize(), Log()))
-	s.Post("/users", Chain(t.addUserHandler, SetContentType(), Log()))
-	s.Get("/users/{userId}", Chain(t.getUserHandler, SetContentType(), Authorize(), Log()))
-	s.Delete("/users/{userId}", Chain(t.deleteUserHandler, SetContentType(), Authorize(), Log()))
-	s.Put("/users/{userId}", Chain(t.updateUserHandler, SetContentType(), Authorize(), Log()))
+	s.Get("/users", Chain(t.getAllUsersHandler, t.SetContentType(), t.Authorize(), t.Log()))
+	s.Post("/users", Chain(t.addUserHandler, t.SetContentType(), t.Log()))
+	s.Get("/users/{userId}", Chain(t.getUserHandler, t.SetContentType(), t.Authorize(), t.Log()))
+	s.Delete("/users/{userId}", Chain(t.deleteUserHandler, t.SetContentType(), t.Authorize(), t.Log()))
+	s.Put("/users/{userId}", Chain(t.updateUserHandler, t.SetContentType(), t.Authorize(), t.Log()))
 
-	s.Post("/user/login", Chain(t.loginUserHandler, SetContentType(), Log()))
+	s.Post("/user/login", Chain(t.loginUserHandler, t.SetContentType(), t.Log()))
 
 	t.Serve = s
 	return t
