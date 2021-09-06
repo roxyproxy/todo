@@ -1,12 +1,11 @@
 package inmemory
 
 import (
+	uuid "github.com/satori/go.uuid"
 	"strings"
 	"time"
 	"todo/model"
 	"todo/storage"
-
-	uuid "github.com/satori/go.uuid"
 )
 
 type InMemory struct {
@@ -74,6 +73,7 @@ func toDateOk(toDate *time.Time, d time.Time) bool {
 	}
 	return true
 }
+
 func fromDateOk(fromDate *time.Time, d time.Time) bool {
 	if fromDate != nil && fromDate.After(d) {
 		return false
@@ -81,7 +81,7 @@ func fromDateOk(fromDate *time.Time, d time.Time) bool {
 	return true
 }
 
-// Users
+// Users.
 func (i *InMemory) GetUser(id string) (model.User, error) {
 	user := i.users[id]
 	return user, nil

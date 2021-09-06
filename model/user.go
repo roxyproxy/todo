@@ -2,9 +2,10 @@ package model
 
 import (
 	"encoding/json"
-	"github.com/golang-jwt/jwt"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt"
 )
 
 type User struct {
@@ -13,7 +14,15 @@ type User struct {
 	FirstName string         `json:"firstname"`
 	LastName  string         `json:"lastname"`
 	Password  string         `json:"-"`
-	Location  CustomLocation `json:"location"` //time.Location
+	Location  CustomLocation `json:"location"` // time.Location
+}
+
+type NewUser struct {
+	UserName  string         `json:"username"`
+	FirstName string         `json:"firstname"`
+	LastName  string         `json:"lastname"`
+	Password  string         `json:"password"`
+	Location  CustomLocation `json:"location"` // time.Location
 }
 
 type Credentials struct {
@@ -29,6 +38,8 @@ type Claims struct {
 type Token struct {
 	TokenString string `json:"token"`
 }
+
+type KeyUserId string
 
 type CustomLocation struct {
 	*time.Location
@@ -48,6 +59,6 @@ func (c CustomLocation) MarshalJSON() ([]byte, error) {
 	if c.Location.String() == "" {
 		return nil, nil
 	}
-	//return []byte(fmt.Sprintf(`"%s"`, c.Location.String())), nil
+	// return []byte(fmt.Sprintf(`"%s"`, c.Location.String())), nil
 	return json.Marshal(c.Location.String())
 }

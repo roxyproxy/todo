@@ -20,8 +20,8 @@ type Storage interface {
 }
 
 type TodoFilter struct {
-	FromDate *time.Time //nil if empty ?
-	ToDate   *time.Time //nil if empty ?
+	FromDate *time.Time // nil if empty ?
+	ToDate   *time.Time // nil if empty ?
 	Status   string
 }
 

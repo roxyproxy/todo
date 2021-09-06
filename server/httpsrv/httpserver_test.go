@@ -1,4 +1,4 @@
-package server
+package httpsrv
 
 import (
 	"bytes"
@@ -6,39 +6,42 @@ import (
 	"github.com/golang/mock/gomock"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-	conf "todo/config"
+	"todo/logger"
 	"todo/model"
-	mockstore "todo/server/mocks"
+	"todo/server/http/mocks"
 	"todo/storage"
 	"todo/storage/inmemory"
+
+	conf "todo/config"
 )
 
 func TestServerWithMock(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	var config = conf.New()
-
 	m := mockstore.NewMockStorage(ctrl)
-	server := NewTodoServer(m, *config)
+	server := NewTodoServer(m, conf.New(), logger.New(ioutil.Discard))
 
 	username := "Roxy"
 	password := "SecretPassword12!"
 	l, _ := time.LoadLocation("America/New_York")
-	location := model.CustomLocation{l}
+	location := model.CustomLocation{Location: l}
 	credentials := model.Credentials{UserName: username, Password: password}
 	hash, err := hashPassword(password)
 	assert.NoError(t, err)
-	user := model.User{Id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+	user := model.User{
+		Id:        "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
 		UserName:  username,
 		FirstName: "Roxy",
 		LastName:  "Proxy",
 		Password:  hash,
-		Location:  location}
+		Location:  location,
+	}
 	token, _ := generateToken(user.Id, server.config.SecretKey)
 
 	t.Run("test hashPassword", func(t *testing.T) {
@@ -92,13 +95,29 @@ func TestServerWithMock(t *testing.T) {
 		assert.Equal(t, "application/json", response.Header().Get("Content-Type"))
 	})
 
-	t.Run("add user", func(t *testing.T) {
-		/*
+	/*
+		t.Run("add user", func(t *testing.T) {
+			newUser := model.User{
+				UserName:  user.UserName,
+				FirstName: user.FirstName,
+				LastName:  user.LastName,
+				Location:  user.Location,
+				Password:  password,
+			}
 			userId := model.TodoId{Id: user.Id}
-			newuser := model.User{UserName: user.UserName, Password: user.Password}
-			m.EXPECT().AddUser(newuser).Return(user.Id, nil)
 
-			userJson, err := json.Marshal(&newuser)
+			m.EXPECT().
+				AddUser(newUser).
+				DoAndReturn(func(u model.User) (string, error) {
+					if !checkPasswordHash(u.Password, user.Password) {
+						t.Fail()
+					}
+					u.Password = "test"
+					fmt.Println(u)
+					return user.Id, nil
+				})
+
+			userJson, err := json.Marshal(&newUser)
 			assert.NoError(t, err)
 
 			userIdJson, err := json.Marshal(&userId)
@@ -112,8 +131,9 @@ func TestServerWithMock(t *testing.T) {
 			assert.Equal(t, response.Code, http.StatusOK)
 			assert.Equal(t, "application/json", response.Header().Get("Content-Type"))
 			assert.JSONEq(t, string(userIdJson), response.Body.String())
-		*/
-	})
+
+		})
+	*/
 
 	t.Run("get user", func(t *testing.T) {
 		m.EXPECT().GetUser(user.Id).Return(user, nil)
@@ -130,7 +150,6 @@ func TestServerWithMock(t *testing.T) {
 		assert.Equal(t, http.StatusOK, response.Code)
 		assert.Equal(t, response.Header().Get("Content-Type"), "application/json")
 		assert.JSONEq(t, string(userJson), response.Body.String())
-
 	})
 
 	t.Run("get all users", func(t *testing.T) {
@@ -149,7 +168,6 @@ func TestServerWithMock(t *testing.T) {
 		assert.Equal(t, http.StatusOK, response.Code)
 		assert.Equal(t, response.Header().Get("Content-Type"), "application/json")
 		assert.JSONEq(t, string(userJson), response.Body.String())
-
 	})
 
 	t.Run("get all users filtered", func(t *testing.T) {
@@ -168,15 +186,16 @@ func TestServerWithMock(t *testing.T) {
 		assert.Equal(t, http.StatusOK, response.Code)
 		assert.Equal(t, response.Header().Get("Content-Type"), "application/json")
 		assert.JSONEq(t, string(userJson), response.Body.String())
-
 	})
 
 	t.Run("update user", func(t *testing.T) {
-		newuser := model.User{Id: user.Id,
+		newuser := model.User{
+			Id:        user.Id,
 			UserName:  "Roxy2",
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
-			Location:  user.Location}
+			Location:  user.Location,
+		}
 		m.EXPECT().GetUser(user.Id).Return(user, nil)
 		m.EXPECT().UpdateUser(newuser).Return(nil)
 
@@ -244,8 +263,8 @@ func TestServerWithMock(t *testing.T) {
 
 	t.Run("get filtered items", func(t *testing.T) {
 		todoItems := []model.TodoItem{
-			{"123", "test1", time.Now(), "done"},
-			{"124", "test2", time.Now(), "done"},
+			{Id: "123", Name: "test1", Date: time.Now(), Status: "done"},
+			{Id: "124", Name: "test2", Date: time.Now(), Status: "done"},
 		}
 		todoItemsJson, err := json.Marshal(&todoItems)
 		assert.NoError(t, err)
@@ -286,28 +305,28 @@ func TestServerWithMock(t *testing.T) {
 		assert.Equal(t, "application/json", response.Header().Get("Content-Type"))
 		assert.JSONEq(t, string(todoIdJson), response.Body.String())
 	})
-
 }
 
 func TestServer(t *testing.T) {
-	var config = conf.New()
 	storage := inmemory.NewInMemoryStorage()
-	server := NewTodoServer(storage, *config)
+	server := NewTodoServer(storage, conf.New(), logger.New(ioutil.Discard))
 
 	username := "Roxy"
 	password := "SecretPassword12!"
 	l, _ := time.LoadLocation("America/New_York")
-	location := model.CustomLocation{l}
+	location := model.CustomLocation{Location: l}
 	hash, err := hashPassword(password)
 	if err != nil {
 		t.Errorf("hashPassword %+v", err)
 	}
-	user := model.User{Id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+	user := model.User{
+		Id:        "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
 		UserName:  username,
 		FirstName: "Roxy",
 		LastName:  "Proxy",
 		Password:  hash,
-		Location:  location}
+		Location:  location,
+	}
 	token, _ := generateToken(user.Id, server.config.SecretKey)
 
 	t.Run("add new item", func(t *testing.T) {
@@ -318,7 +337,8 @@ func TestServer(t *testing.T) {
 		assertStatus(t, resp.Code, http.StatusOK)
 
 		todoId := model.TodoId{}
-		json.NewDecoder(resp.Body).Decode(&todoId)
+		err := json.NewDecoder(resp.Body).Decode(&todoId)
+		assert.NoError(t, err)
 
 		want, err := uuid.FromString(todoId.Id)
 		if err != nil {
@@ -326,7 +346,6 @@ func TestServer(t *testing.T) {
 		}
 
 		DeleteTodo(server, todoId.Id)
-
 	})
 
 	t.Run("delete item", func(t *testing.T) {
@@ -335,7 +354,8 @@ func TestServer(t *testing.T) {
 
 		resp := AddRequest(server, j)
 		todoId := model.TodoId{}
-		json.NewDecoder(resp.Body).Decode(&todoId)
+		err := json.NewDecoder(resp.Body).Decode(&todoId)
+		assert.NoError(t, err)
 
 		req, _ := http.NewRequest(http.MethodDelete, "/todos/"+todoId.Id, nil)
 		req.Header.Set("Authorization", "Bearer "+token.TokenString)
@@ -351,23 +371,20 @@ func TestServer(t *testing.T) {
 		j1, _ := json.Marshal(&todo1)
 		todo2 := model.TodoItem{Name: "test2"}
 		j2, _ := json.Marshal(&todo2)
-		todo3 := model.TodoItem{}
 
 		resp := AddRequest(server, j1)
 		todoId := model.TodoId{}
-		json.NewDecoder(resp.Body).Decode(&todoId)
+		err := json.NewDecoder(resp.Body).Decode(&todoId)
+		assert.NoError(t, err)
 
 		req, _ := http.NewRequest(http.MethodPut, "/todos/"+todoId.Id, bytes.NewBuffer(j2))
 		req.Header.Set("Authorization", "Bearer "+token.TokenString)
 
 		resp = httptest.NewRecorder()
 		server.Serve.ServeHTTP(resp, req)
-		json.NewDecoder(resp.Body).Decode(&todo3)
-
 		assertStatus(t, resp.Code, http.StatusOK)
 
 		DeleteTodo(server, todoId.Id)
-
 	})
 
 	t.Run("get all items", func(t *testing.T) {
@@ -390,12 +407,12 @@ func TestServer(t *testing.T) {
 		server.Serve.ServeHTTP(res, req)
 		todoItems := []model.TodoItem{}
 
-		json.NewDecoder(res.Body).Decode(&todoItems)
+		err = json.NewDecoder(res.Body).Decode(&todoItems)
+		assert.NoError(t, err)
 
 		assertStatus(t, res.Code, http.StatusOK)
 		assertResponseBody(t, len(todoItems), 1)
 	})
-
 }
 
 func assertStatus(t testing.TB, got, want int) {
@@ -404,6 +421,7 @@ func assertStatus(t testing.TB, got, want int) {
 		t.Errorf("did not get correct status, got %d, want %d", got, want)
 	}
 }
+
 func assertResponseBody(t testing.TB, got, want interface{}) {
 	t.Helper()
 	if got != want {

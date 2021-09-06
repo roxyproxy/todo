@@ -1,8 +1,8 @@
-package server
+package httpsrv
 
 import (
 	"context"
-	"github.com/golang-jwt/jwt"
+	"fmt"
 	"net/http"
 	"todo/model"
 )
@@ -16,23 +16,18 @@ func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	return f
 }
 
-func (t *TodoServer) Authorize() Middleware {
+func (t *Server) Authorize() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			tokenString := getToken(r)
-			token, err := jwt.ParseWithClaims(tokenString, &model.Claims{}, func(token *jwt.Token) (interface{}, error) {
-				return []byte(t.config.SecretKey), nil
-			})
+			claims, err := t.service.ValidateToken(tokenString)
+
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+				t.handleError(fmt.Errorf("%q: %q: %w", "authentication failed.", err, model.ErrUnauthorized), w)
 				return
 			}
-			claims, ok := token.Claims.(*model.Claims)
-			if !ok || !token.Valid {
-				http.Error(w, "invalid token: authentication failed", http.StatusUnauthorized)
-				return
-			}
-			ctx := context.WithValue(r.Context(), "userid", claims.UserId)
+
+			ctx := context.WithValue(r.Context(), model.KeyUserId("userid"), claims.UserId)
 			r = r.WithContext(ctx)
 
 			f(w, r)
@@ -40,7 +35,7 @@ func (t *TodoServer) Authorize() Middleware {
 	}
 }
 
-func (t *TodoServer) Log() Middleware {
+func (t *Server) Log() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			f(w, r)
@@ -48,7 +43,7 @@ func (t *TodoServer) Log() Middleware {
 	}
 }
 
-func (t *TodoServer) SetContentType() Middleware {
+func (t *Server) SetContentType() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")

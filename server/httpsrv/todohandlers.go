@@ -1,4 +1,4 @@
-package server
+package httpsrv
 
 import (
 	"encoding/json"
@@ -9,8 +9,8 @@ import (
 	"todo/storage"
 )
 
-// todos handlers
-func (t *TodoServer) getAllItemsHandler(w http.ResponseWriter, r *http.Request) {
+// todos handlers.
+func (t *Server) getAllItemsHandler(w http.ResponseWriter, r *http.Request) {
 	filter := storage.TodoFilter{}
 	if val, ok := r.URL.Query()["status"]; ok {
 		filter.Status = val[0]
@@ -33,19 +33,21 @@ func (t *TodoServer) getAllItemsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	items, err := t.storage.GetAllItems(filter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = json.NewEncoder(w).Encode(items)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	json.NewEncoder(w).Encode(items)
-
 }
 
-func (t *TodoServer) addItemHandler(w http.ResponseWriter, r *http.Request) {
+func (t *Server) addItemHandler(w http.ResponseWriter, r *http.Request) {
 	todo := model.TodoItem{}
 	err := json.NewDecoder(r.Body).Decode(&todo)
-
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -57,10 +59,14 @@ func (t *TodoServer) addItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	j := model.TodoId{Id: id}
-	json.NewEncoder(w).Encode(j)
+	err = json.NewEncoder(w).Encode(j)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 }
 
-func (t *TodoServer) getItemHandler(w http.ResponseWriter, r *http.Request) {
+func (t *Server) getItemHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "todoId")
 	todo, err := t.storage.GetItem(id)
 	if err != nil {
@@ -71,10 +77,14 @@ func (t *TodoServer) getItemHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		return
 	}
-	json.NewEncoder(w).Encode(todo)
+	err = json.NewEncoder(w).Encode(todo)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 }
 
-func (t *TodoServer) deleteItemHandler(w http.ResponseWriter, r *http.Request) {
+func (t *Server) deleteItemHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "todoId")
 	todo, err := t.storage.GetItem(id)
 	if err != nil {
@@ -91,7 +101,8 @@ func (t *TodoServer) deleteItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-func (t *TodoServer) updateItemHandler(w http.ResponseWriter, r *http.Request) {
+
+func (t *Server) updateItemHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "todoId")
 	todo, err := t.storage.GetItem(id)
 	if err != nil {
@@ -103,7 +114,12 @@ func (t *TodoServer) updateItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	todo = model.TodoItem{}
-	json.NewDecoder(r.Body).Decode(&todo)
+	err = json.NewDecoder(r.Body).Decode(&todo)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	todo.Id = id
 	err = t.storage.UpdateItem(todo)
 	if err != nil {
