@@ -50,17 +50,17 @@ func (t *Server) handleError(err error, w http.ResponseWriter) {
 
 	t.log.Errorf("HTTP: %s", err)
 
-	if errors.Is(err, model.ErrOperational) {
+	switch {
+	case errors.Is(err, model.ErrOperational):
 		status = http.StatusInternalServerError
-	}
-	if errors.Is(err, model.ErrBadRequest) {
+	case errors.Is(err, model.ErrBadRequest):
 		status = http.StatusBadRequest
-	}
-	if errors.Is(err, model.ErrNotFound) {
+	case errors.Is(err, model.ErrNotFound):
 		status = http.StatusForbidden
-	}
-	if errors.Is(err, model.ErrUnauthorized) {
+	case errors.Is(err, model.ErrUnauthorized):
 		status = http.StatusUnauthorized
+	default:
+		status = http.StatusBadRequest
 	}
 
 	statusText = http.StatusText(status)

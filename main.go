@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	grpcPort = ":5005"
-	httpPort = ":5006"
+	grpcPort = ":5007"
+	httpPort = ":5008"
 )
 
 func main() {

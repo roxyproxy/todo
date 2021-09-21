@@ -2,6 +2,7 @@ package httpsrv
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/go-chi/chi"
 	"net/http"
 	"time"
@@ -18,7 +19,7 @@ func (t *Server) getAllItemsHandler(w http.ResponseWriter, r *http.Request) {
 	if date, ok := r.URL.Query()["fromdate"]; ok {
 		fromDate, err := time.Parse(time.RFC3339, date[0])
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			t.handleError(fmt.Errorf("%q: %q: %w", "Error in getAllItemsHandler.", err, model.ErrBadRequest), w)
 			return
 		}
 		filter.FromDate = &fromDate
@@ -26,21 +27,21 @@ func (t *Server) getAllItemsHandler(w http.ResponseWriter, r *http.Request) {
 	if date, ok := r.URL.Query()["todate"]; ok {
 		toDate, err := time.Parse(time.RFC3339, date[0])
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			t.handleError(fmt.Errorf("%q: %q: %w", "Error in getAllItemsHandler.", err, model.ErrBadRequest), w)
 			return
 		}
-		filter.FromDate = &toDate
+		filter.ToDate = &toDate
 	}
 
-	items, err := t.storage.GetAllItems(filter)
+	items, err := t.service.GetTodos(r.Context(), filter)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %w", "Error in getAllItemsHandler.", err), w)
 		return
 	}
 	err = json.NewEncoder(w).Encode(items)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in getAllItemsHandler.", err, model.ErrBadRequest), w)
 		return
 	}
 }
@@ -49,81 +50,62 @@ func (t *Server) addItemHandler(w http.ResponseWriter, r *http.Request) {
 	todo := model.TodoItem{}
 	err := json.NewDecoder(r.Body).Decode(&todo)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in add todo handler", err, model.ErrBadRequest), w)
 		return
 	}
 
-	id, err := t.storage.AddItem(todo)
+	id, err := t.service.AddTodo(r.Context(), todo)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %w", "Error in add todo handler", err), w)
 		return
 	}
+
 	j := model.TodoId{Id: id}
 	err = json.NewEncoder(w).Encode(j)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in add todo handler", err, model.ErrBadRequest), w)
 		return
 	}
 }
 
 func (t *Server) getItemHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "todoId")
-	todo, err := t.storage.GetItem(id)
+	todo, err := t.service.GetTodo(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %w", "Error in getItemsHandler.", err), w)
 		return
 	}
 	if todo.Id == "" {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		t.handleError(fmt.Errorf("%q: %w", "Error in getItemHandler.", model.ErrNotFound), w)
 		return
 	}
 	err = json.NewEncoder(w).Encode(todo)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in getItemsHandler.", err, model.ErrBadRequest), w)
 		return
 	}
 }
 
 func (t *Server) deleteItemHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "todoId")
-	todo, err := t.storage.GetItem(id)
+	err := t.service.DeleteTodo(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if todo.Id == "" {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
-	err = t.storage.DeleteItem(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %w", "Error in deleteItemHandler.", err), w)
 		return
 	}
 }
 
 func (t *Server) updateItemHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "todoId")
-	todo, err := t.storage.GetItem(id)
+	todo := model.TodoItem{}
+	err := json.NewDecoder(r.Body).Decode(&todo)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %q: %w", "updateItemHandler.", err, model.ErrBadRequest), w)
 		return
 	}
-	if todo.Id == "" {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
-	todo = model.TodoItem{}
-	err = json.NewDecoder(r.Body).Decode(&todo)
+	err = t.service.UpdateTodo(r.Context(), id, todo)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	todo.Id = id
-	err = t.storage.UpdateItem(todo)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %w", "Error in updateItemHandler.", err), w)
 		return
 	}
 }

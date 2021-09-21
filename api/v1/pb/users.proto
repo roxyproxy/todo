@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "todo/api/v1/pb";
+
+package users;
+
+service Users {
+  rpc AddUser (AddUserRequest) returns (AddUserReply) {}
+  rpc DeleteUser (DeleteUserRequest) returns (DeleteUserReply) {}
+  rpc UpdateUser (UpdateUserRequest) returns (UpdateUserReply) {}
+  rpc GetAllUsers (GetAllUsersRequest) returns (GetAllUsersReply) {}
+  rpc GetUser (GetUserRequest) returns (GetUserReply) {}
+  rpc LoginUser (LoginRequest) returns (LoginReply) {}
+
+  rpc AddTodo (AddTodoRequest) returns (AddTodoReply) {}
+  rpc GetAllTodos (GetAllTodosRequest) returns (GetAllTodosReply) {}
+  rpc GetTodo (GetTodoRequest) returns (GetTodoReply) {}
+  rpc DeleteTodo (DeleteTodoRequest) returns (DeleteTodoReply) {}
+  rpc UpdateTodo (UpdateTodoRequest) returns (UpdateTodoReply) {}
+}
+
+message User {
+  string Id = 1;
+  string UserName = 2;
+  string FirstName = 3;
+  string LastName = 4;
+  optional string Password = 5;
+  string Location = 6;
+}
+
+message AddUserRequest {
+  string UserName = 1;
+  string FirstName = 2;
+  string LastName = 3;
+  string Password = 4;
+  string Location = 5;
+}
+message AddUserReply {
+  string Id = 1;
+}
+
+message DeleteUserRequest {
+}
+message DeleteUserReply {
+}
+
+message UpdateUserRequest {
+  string UserName = 1;
+  string FirstName = 2;
+  string LastName = 3;
+  string Password = 4;
+  string Location = 5;
+}
+message UpdateUserReply {
+}
+
+message GetAllUsersRequest {
+}
+message GetAllUsersReply {
+  repeated User Users = 1;
+}
+
+message GetUserRequest {
+}
+message GetUserReply {
+  User User = 1;
+}
+
+message LoginRequest {
+  string UserName = 1;
+  string Password = 2;
+}
+message LoginReply {
+  string Token = 1;
+}
+
+message Todo {
+  string Id = 1;
+  string Name = 2;
+  google.protobuf.Timestamp Date = 3;
+  string Status = 4;
+  optional string UserId = 5;
+}
+
+message AddTodoRequest {
+  string Name = 1;
+  google.protobuf.Timestamp Date = 2;
+  string Status = 3;
+}
+message AddTodoReply {
+  string Id = 1;
+}
+
+message GetAllTodosRequest {
+}
+message GetAllTodosReply {
+  repeated Todo Todos = 1;
+}
+
+message GetTodoRequest {
+}
+message GetTodoReply {
+  Todo Todo = 1;
+}
+
+message DeleteTodoRequest {
+}
+message DeleteTodoReply {
+}
+
+message UpdateTodoRequest {
+  string Name = 1;
+  google.protobuf.Timestamp Date = 2;
+  string Status = 3;
+}
+message UpdateTodoReply {
+}
+
+//protoc --go_out=. --go_opt=paths=source_relative     --go-grpc_out=. --go-grpc_opt=paths=source_relative     api/v1/pb/users.proto

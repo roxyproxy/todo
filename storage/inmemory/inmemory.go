@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"fmt"
 	uuid "github.com/satori/go.uuid"
 	"strings"
 	"time"
@@ -19,10 +20,20 @@ func NewInMemoryStorage() *InMemory {
 
 func (i *InMemory) GetItem(id string) (model.TodoItem, error) {
 	todo := i.todoItems[id]
+	location, err := time.LoadLocation(i.users[todo.UserId].Location.String())
+	if err != nil {
+		return model.TodoItem{}, fmt.Errorf("cant load location")
+	}
+	todo.Date = todo.Date.In(location)
 	return todo, nil
 }
 
 func (i *InMemory) UpdateItem(item model.TodoItem) error {
+	if item.Date.IsZero() {
+		item.Date = time.Now().UTC()
+	} else {
+		item.Date = item.Date.UTC()
+	}
 	i.todoItems[item.Id] = item
 	return nil
 }
@@ -38,6 +49,13 @@ func (i *InMemory) AddItem(item model.TodoItem) (string, error) {
 	if item.Status == "" {
 		item.Status = "new"
 	}
+
+	if item.Date.IsZero() {
+		item.Date = time.Now().UTC()
+	} else {
+		item.Date = item.Date.UTC()
+	}
+
 	i.todoItems[u] = item
 	return u, nil
 }
@@ -45,6 +63,11 @@ func (i *InMemory) AddItem(item model.TodoItem) (string, error) {
 func (i *InMemory) GetAllItems(filter storage.TodoFilter) ([]model.TodoItem, error) {
 	arr := make([]model.TodoItem, 0)
 	for _, value := range i.todoItems {
+		location, err := time.LoadLocation(i.users[value.UserId].Location.String())
+		if err != nil {
+			return arr, fmt.Errorf("cant load location")
+		}
+		value.Date = value.Date.In(location)
 		if filter == (storage.TodoFilter{}) {
 			arr = append(arr, value)
 		} else {
@@ -57,7 +80,14 @@ func (i *InMemory) GetAllItems(filter storage.TodoFilter) ([]model.TodoItem, err
 }
 
 func itemFiltered(filter storage.TodoFilter, t model.TodoItem) bool {
-	return statusOk(filter.Status, t.Status) && toDateOk(filter.ToDate, t.Date) && fromDateOk(filter.FromDate, t.Date)
+	return useridOk(filter.UserId, t.UserId) && statusOk(filter.Status, t.Status) && toDateOk(filter.ToDate, t.Date) && fromDateOk(filter.FromDate, t.Date)
+}
+
+func useridOk(userid string, s string) bool {
+	if userid != "" && strings.Compare(userid, s) != 0 {
+		return false
+	}
+	return true
 }
 
 func statusOk(status string, s string) bool {

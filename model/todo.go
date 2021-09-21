@@ -7,6 +7,7 @@ type TodoItem struct {
 	Name   string    `json:"name"`
 	Date   time.Time `json:"date"`
 	Status string    `json:"status"`
+	UserId string    `json:"-"`
 }
 
 type TodoId struct {

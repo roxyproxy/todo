@@ -1,6 +1,8 @@
 package inmemory
 
 import (
+	uuid "github.com/satori/go.uuid"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 	"time"

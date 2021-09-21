@@ -20,7 +20,7 @@ func (t *Server) Authorize() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			tokenString := getToken(r)
-			claims, err := t.service.ValidateToken(tokenString)
+			claims, err := t.service.ValidateToken(r.Context(), tokenString)
 
 			if err != nil {
 				t.handleError(fmt.Errorf("%q: %q: %w", "authentication failed.", err, model.ErrUnauthorized), w)

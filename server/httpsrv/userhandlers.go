@@ -17,14 +17,15 @@ func (t *Server) getAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 		filter.UserName = val[0]
 	}
 
-	users, err := t.service.GetUsers(filter, r.Context())
+	users, err := t.service.GetUsers(r.Context(), filter)
+
 	if err != nil {
-		t.handleError(fmt.Errorf("%q: %q: %w", "Error in getAllUsersHandler.", err, model.ErrBadRequest), w)
+		t.handleError(fmt.Errorf("%q: %w: ", "Error in getAllUsersHandler.", err), w)
 		return
 	}
 
 	if err := json.NewEncoder(w).Encode(users); err != nil {
-		t.handleError(fmt.Errorf("%q: %w", "Error in getAllUsersHandler.", model.ErrBadRequest), w)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in getAllUsersHandler.", err, model.ErrBadRequest), w)
 		return
 	}
 }
@@ -32,7 +33,7 @@ func (t *Server) getAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 func (t *Server) addUserHandler(w http.ResponseWriter, r *http.Request) {
 	newUser := model.NewUser{}
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
-		t.handleError(fmt.Errorf("%q: %w", "Error in add user handler", model.ErrBadRequest), w)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in add user handler", err, model.ErrBadRequest), w)
 		return
 	}
 	user := model.User{
@@ -43,75 +44,55 @@ func (t *Server) addUserHandler(w http.ResponseWriter, r *http.Request) {
 		Location:  newUser.Location,
 	}
 
-	id, err := t.service.AddUser(user)
+	id, err := t.service.AddUser(r.Context(), user)
+	if err != nil {
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in add user handler", err, model.ErrBadRequest), w)
+		return
+	}
 	j := model.TodoId{Id: id}
 	err = json.NewEncoder(w).Encode(j)
 	if err != nil {
-		t.handleError(fmt.Errorf("%q: %w", "Error in add user handler", model.ErrBadRequest), w)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in add user handler", err, model.ErrBadRequest), w)
 		return
 	}
 }
 
 func (t *Server) getUserHandler(w http.ResponseWriter, r *http.Request) {
-	// userid := getUserFromContext(r)
-
 	id := chi.URLParam(r, "userId")
-	user, err := t.storage.GetUser(id)
+	user, err := t.service.GetUser(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %w", "Error in get user handler", err), w)
 		return
 	}
-	if user.Id == "" {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
+
 	err = json.NewEncoder(w).Encode(user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in get user handler", err, model.ErrBadRequest), w)
 		return
 	}
 }
 
 func (t *Server) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "userId")
-	user, err := t.storage.GetUser(id)
+	err := t.service.DeleteUser(r.Context(), id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if user.Id == "" {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return
-	}
-	err = t.storage.DeleteUser(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %w", "Error in delete user handler", err), w)
 		return
 	}
 }
 
 func (t *Server) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "userId")
-	user, err := t.storage.GetUser(id)
+	user := model.User{}
+	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in update user handler", err, model.ErrBadRequest), w)
 		return
 	}
-	if user.Id == "" {
-		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		// http.NotFound(w, r)
-		return
-	}
-	user = model.User{}
-	err = json.NewDecoder(r.Body).Decode(&user)
+
+	err = t.service.UpdateUser(r.Context(), id, user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	user.Id = id
-	err = t.storage.UpdateUser(user)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		t.handleError(fmt.Errorf("%q: %w", "Error in update user handler", err), w)
 		return
 	}
 }
@@ -123,7 +104,7 @@ func (t *Server) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 		t.handleError(fmt.Errorf("%q: %w", "Error in loginUsersHandler.", model.ErrUnauthorized), w)
 		return
 	}
-	token, err := t.service.LoginUser(credentials)
+	token, err := t.service.LoginUser(r.Context(), credentials)
 
 	err = json.NewEncoder(w).Encode(token)
 	if err != nil {
