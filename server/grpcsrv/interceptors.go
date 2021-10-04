@@ -18,7 +18,7 @@ type AuthMD struct {
 
 func (a *AuthMD) UnaryInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-		if info.FullMethod != "/user.User/AddUser" && info.FullMethod != "/user.User/LoginUser" {
+		if info.FullMethod != "/users.Users/AddUser" && info.FullMethod != "/users.Users/LoginUser" {
 			ctx, err = a.authorize(ctx)
 			if err != nil {
 				return nil, err

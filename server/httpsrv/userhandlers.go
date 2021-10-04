@@ -101,14 +101,18 @@ func (t *Server) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	var credentials model.Credentials
 	err := json.NewDecoder(r.Body).Decode(&credentials)
 	if err != nil {
-		t.handleError(fmt.Errorf("%q: %w", "Error in loginUsersHandler.", model.ErrUnauthorized), w)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in loginUsersHandler.", err, model.ErrUnauthorized), w)
 		return
 	}
 	token, err := t.service.LoginUser(r.Context(), credentials)
+	if err != nil {
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in loginUsersHandler.", err, model.ErrUnauthorized), w)
+		return
+	}
 
 	err = json.NewEncoder(w).Encode(token)
 	if err != nil {
-		t.handleError(fmt.Errorf("%q: %w", "Error in loginUsersHandler.", model.ErrUnauthorized), w)
+		t.handleError(fmt.Errorf("%q: %q: %w", "Error in loginUsersHandler.", err, model.ErrUnauthorized), w)
 		return
 	}
 }

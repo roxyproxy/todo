@@ -92,6 +92,7 @@ func TestServerWithMock(t *testing.T) {
 		assert.Equal(t, "application/json", response.Header().Get("Content-Type"))
 	})
 
+	//todo check all fields except password
 	/*
 		t.Run("add user", func(t *testing.T) {
 			newUser := model.User{

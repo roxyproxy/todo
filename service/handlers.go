@@ -75,7 +75,7 @@ func (h *handlersService) AddUser(ctx context.Context, user model.User) (string,
 
 	id, err := h.storage.AddUser(user)
 	if err != nil {
-		return "", fmt.Errorf("%q: %w", "Could not add user", model.ErrBadRequest)
+		return "", fmt.Errorf("%q: %q: %w", "Could not add user", err, model.ErrBadRequest)
 	}
 	return id, nil
 }
@@ -116,7 +116,7 @@ func (h *handlersService) UpdateUser(ctx context.Context, id string, user model.
 	user.Id = id
 	err = h.storage.UpdateUser(user)
 	if err != nil {
-		return fmt.Errorf("%q: %w", "Could not update user", model.ErrBadRequest)
+		return fmt.Errorf("%q: %q: %w", "Could not update user", err, model.ErrBadRequest)
 	}
 	return nil
 }
@@ -124,7 +124,7 @@ func (h *handlersService) UpdateUser(ctx context.Context, id string, user model.
 func (h *handlersService) LoginUser(ctx context.Context, credentials model.Credentials) (model.Token, error) {
 	userId, err := h.AuthenticateUser(credentials)
 	if err != nil {
-		return model.Token{}, fmt.Errorf("Login error: %v: %w", err, model.ErrUnauthorized)
+		return model.Token{}, fmt.Errorf("Login error: %q: %w", err, model.ErrUnauthorized)
 	}
 
 	token, err := h.GenerateToken(userId, h.config.SecretKey)
@@ -161,7 +161,10 @@ func (h *handlersService) HashPassword(password string) (string, error) {
 
 func (h *handlersService) AuthenticateUser(credentials model.Credentials) (string, error) {
 	filter := storage.UserFilter{UserName: credentials.UserName}
-	users, _ := h.storage.GetAllUsers(filter)
+	users, err := h.storage.GetAllUsers(filter)
+	if err != nil {
+		return "", fmt.Errorf("%q", err)
+	}
 
 	if len(users) == 0 || !h.CheckPasswordHash(credentials.Password, users[0].Password) {
 		return "", fmt.Errorf("%q", "Invalid user credentials.")
@@ -220,7 +223,7 @@ func (h *handlersService) GetTodos(ctx context.Context, filter storage.TodoFilte
 
 	todos, err := h.storage.GetAllItems(filter)
 	if err != nil {
-		return nil, fmt.Errorf("%q: %q: %w", "Could not get all users.", err, model.ErrOperational)
+		return nil, fmt.Errorf("%q: %q: %w", "Could not get all todos.", err, model.ErrOperational)
 	}
 
 	return todos, nil
@@ -237,7 +240,7 @@ func (h *handlersService) GetTodo(ctx context.Context, id string) (model.TodoIte
 		return model.TodoItem{}, fmt.Errorf("%q: %q: %w", "Could not get todo.", err, model.ErrOperational)
 	}
 	if todo.Id == "" || todo.UserId != userid {
-		return model.TodoItem{}, fmt.Errorf("%q: %q: %w", "Could not get todo.", err, model.ErrNotFound)
+		return model.TodoItem{}, fmt.Errorf("%q: %w", "Could not get todo.", model.ErrNotFound)
 	}
 
 	return todo, nil
