@@ -1,8 +1,6 @@
 package inmemory
 
 import (
-	uuid "github.com/satori/go.uuid"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 	"time"
@@ -16,13 +14,13 @@ func TestStorage(t *testing.T) {
 	storageInMemory := InMemory{
 		map[string]model.TodoItem{
 			"6ba7b810-9dad-11d1-80b4-00c04fd430c8": {
-				Id:   "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+				ID:   "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
 				Name: "todo1",
 			},
 		},
 		map[string]model.User{
 			"6ba7b810-9dad-11d1-80b4-00c04fd430c8": {
-				Id:        "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+				ID:        "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
 				UserName:  "RoxyProxy",
 				FirstName: "Roxy",
 				LastName:  "Proxy",
@@ -42,7 +40,7 @@ func TestStorage(t *testing.T) {
 	})
 
 	t.Run("Update todo item", func(t *testing.T) {
-		err := storageInMemory.UpdateItem(model.TodoItem{Id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8", Name: "todo2"})
+		err := storageInMemory.UpdateItem(model.TodoItem{ID: "6ba7b810-9dad-11d1-80b4-00c04fd430c8", Name: "todo2"})
 		assert.NoError(t, err)
 
 		want := "todo2"
@@ -128,7 +126,7 @@ func TestStorage(t *testing.T) {
 		l, _ := time.LoadLocation("America/New_York")
 		location := model.CustomLocation{Location: l}
 		want := model.User{
-			Id:        "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+			ID:        "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
 			UserName:  "RoxyProxy",
 			FirstName: "Roxy",
 			LastName:  "Proxy",
@@ -152,7 +150,7 @@ func TestStorage(t *testing.T) {
 		}
 
 		user, _ := storageInMemory.GetUser(id)
-		newUser.Id = id
+		newUser.ID = id
 		assert.Equal(t, newUser, user)
 
 		err = storageInMemory.DeleteUser(id)
@@ -173,7 +171,7 @@ func TestStorage(t *testing.T) {
 	t.Run("Update user", func(t *testing.T) {
 		newUser := model.User{UserName: "Roxy2", Password: "Proxy2"}
 		id, _ := storageInMemory.AddUser(newUser)
-		newUser.Id = id
+		newUser.ID = id
 		newUser.UserName = "Roxy3"
 		err := storageInMemory.UpdateUser(newUser)
 		if err != nil {

@@ -2,21 +2,23 @@ package config
 
 import "os"
 
+// Config represents a config info used in application.
 type Config struct {
 	SecretKey string
 	DBUrl     string
 	GrpcPort  string
-	HttpPort  string
+	HTTPPort  string
 }
 
-//TODO create DB struct
+// TODO create DB struct
 
+// New returns config object.
 func New() *Config {
 	return &Config{
 		SecretKey: getEnv("SECRETKEY", ""),
 		DBUrl:     getEnv("DATABASE_URL", ""),
 		GrpcPort:  getEnv("GRPCPORT", ":5000"),
-		HttpPort:  getEnv("HTTPPORT", ":5001"),
+		HTTPPort:  getEnv("HTTPPORT", ":5001"),
 	}
 }
 

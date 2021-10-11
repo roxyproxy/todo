@@ -18,16 +18,16 @@ import (
 	"google.golang.org/grpc"
 )
 
+// Server represents server struct.
 type Server struct {
 	pb.UnimplementedUsersServer
-	storage storage.Storage
 	config  *config.Config
 	log     logger.Logger
 	service service.Handlers
 }
 
-func NewGrpcServer(storage storage.Storage, c *config.Config, l logger.Logger) *grpc.Server {
-	s := service.NewService(storage, c)
+// NewGrpcServer returns grpc server object.
+func NewGrpcServer(s service.Handlers, c *config.Config, l logger.Logger) *grpc.Server {
 	authMD := AuthMD{service: s, config: c}
 	opts := make([]grpc.ServerOption, 0)
 	opts = append(opts, grpc.ChainUnaryInterceptor(authMD.UnaryInterceptor()))
@@ -39,9 +39,9 @@ func NewGrpcServer(storage storage.Storage, c *config.Config, l logger.Logger) *
 		service: s,
 	})
 	return server
-
 }
 
+// AddUser add user handler.
 func (s *Server) AddUser(ctx context.Context, in *pb.AddUserRequest) (*pb.AddUserReply, error) {
 	user := model.User{
 		UserName:  in.UserName,
@@ -52,7 +52,6 @@ func (s *Server) AddUser(ctx context.Context, in *pb.AddUserRequest) (*pb.AddUse
 	}
 
 	id, err := s.service.AddUser(ctx, user)
-
 	if err != nil {
 		s.log.Errorf("Could not add user %v", err)
 		return nil, err
@@ -61,6 +60,7 @@ func (s *Server) AddUser(ctx context.Context, in *pb.AddUserRequest) (*pb.AddUse
 	return &pb.AddUserReply{Id: id}, nil
 }
 
+// UpdateUser update user handler.
 func (s *Server) UpdateUser(ctx context.Context, in *pb.UpdateUserRequest) (*pb.UpdateUserReply, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -82,7 +82,6 @@ func (s *Server) UpdateUser(ctx context.Context, in *pb.UpdateUserRequest) (*pb.
 	}
 
 	err := s.service.UpdateUser(ctx, userid[0], user)
-
 	if err != nil {
 		s.log.Errorf("Could not update user %v", err)
 		return nil, err
@@ -91,6 +90,7 @@ func (s *Server) UpdateUser(ctx context.Context, in *pb.UpdateUserRequest) (*pb.
 	return &pb.UpdateUserReply{}, nil
 }
 
+// DeleteUser delete user handler.
 func (s *Server) DeleteUser(ctx context.Context, in *pb.DeleteUserRequest) (*pb.DeleteUserReply, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -111,6 +111,7 @@ func (s *Server) DeleteUser(ctx context.Context, in *pb.DeleteUserRequest) (*pb.
 	return &pb.DeleteUserReply{}, nil
 }
 
+// GetAllUsers get all users handler.
 func (s *Server) GetAllUsers(ctx context.Context, in *pb.GetAllUsersRequest) (*pb.GetAllUsersReply, error) {
 	filter := storage.UserFilter{}
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -132,7 +133,7 @@ func (s *Server) GetAllUsers(ctx context.Context, in *pb.GetAllUsersRequest) (*p
 	usersReply := &pb.GetAllUsersReply{}
 	for _, u := range users {
 		usersReply.Users = append(usersReply.Users, &pb.User{
-			Id:        u.Id,
+			Id:        u.ID,
 			UserName:  u.UserName,
 			FirstName: u.FirstName,
 			LastName:  u.LastName,
@@ -142,6 +143,7 @@ func (s *Server) GetAllUsers(ctx context.Context, in *pb.GetAllUsersRequest) (*p
 	return usersReply, nil
 }
 
+// GetUser get user handler.
 func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUserReply, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -162,7 +164,7 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 
 	userReply := &pb.GetUserReply{}
 	userReply.User = &pb.User{
-		Id:        user.Id,
+		Id:        user.ID,
 		UserName:  user.UserName,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
@@ -172,10 +174,10 @@ func (s *Server) GetUser(ctx context.Context, in *pb.GetUserRequest) (*pb.GetUse
 	return userReply, nil
 }
 
+// LoginUser login user handler.
 func (s *Server) LoginUser(ctx context.Context, in *pb.LoginRequest) (*pb.LoginReply, error) {
 	credentials := model.Credentials{UserName: in.GetUserName(), Password: in.GetPassword()}
 	token, err := s.service.LoginUser(ctx, credentials)
-
 	if err != nil {
 		s.log.Errorf("%q: %w", "Can't parse credentials.", err)
 		return nil, err
@@ -185,14 +187,16 @@ func (s *Server) LoginUser(ctx context.Context, in *pb.LoginRequest) (*pb.LoginR
 		Token: token.TokenString,
 	}, nil
 }
+
 func getCustomLocation(s string) model.CustomLocation {
 	loc, err := time.LoadLocation(s)
 	if err != nil {
 		return model.CustomLocation{}
 	}
-	return model.CustomLocation{loc}
+	return model.CustomLocation{Location: loc}
 }
 
+// AddTodo add todo handler.
 func (s *Server) AddTodo(ctx context.Context, in *pb.AddTodoRequest) (*pb.AddTodoReply, error) {
 	todo := model.TodoItem{
 		Name:   in.Name,
@@ -201,7 +205,6 @@ func (s *Server) AddTodo(ctx context.Context, in *pb.AddTodoRequest) (*pb.AddTod
 	}
 
 	id, err := s.service.AddTodo(ctx, todo)
-
 	if err != nil {
 		s.log.Errorf("Could not add todo %v", err)
 		return nil, err
@@ -210,6 +213,7 @@ func (s *Server) AddTodo(ctx context.Context, in *pb.AddTodoRequest) (*pb.AddTod
 	return &pb.AddTodoReply{Id: id}, nil
 }
 
+// GetAllTodos get all todos handler.
 func (s *Server) GetAllTodos(ctx context.Context, in *pb.GetAllTodosRequest) (*pb.GetAllTodosReply, error) {
 	filter := storage.TodoFilter{}
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -251,7 +255,7 @@ func (s *Server) GetAllTodos(ctx context.Context, in *pb.GetAllTodosRequest) (*p
 	todosReply := &pb.GetAllTodosReply{}
 	for _, u := range todos {
 		todosReply.Todos = append(todosReply.Todos, &pb.Todo{
-			Id:     u.Id,
+			Id:     u.ID,
 			Status: u.Status,
 			Name:   u.Name,
 			Date:   timestamppb.New(u.Date),
@@ -260,6 +264,7 @@ func (s *Server) GetAllTodos(ctx context.Context, in *pb.GetAllTodosRequest) (*p
 	return todosReply, nil
 }
 
+// GetTodo get todo handler.
 func (s *Server) GetTodo(ctx context.Context, in *pb.GetTodoRequest) (*pb.GetTodoReply, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -280,7 +285,7 @@ func (s *Server) GetTodo(ctx context.Context, in *pb.GetTodoRequest) (*pb.GetTod
 
 	todoReply := &pb.GetTodoReply{}
 	todoReply.Todo = &pb.Todo{
-		Id:     todo.Id,
+		Id:     todo.ID,
 		Name:   todo.Name,
 		Status: todo.Status,
 		Date:   timestamppb.New(todo.Date),
@@ -289,6 +294,7 @@ func (s *Server) GetTodo(ctx context.Context, in *pb.GetTodoRequest) (*pb.GetTod
 	return todoReply, nil
 }
 
+// UpdateTodo update todo handler.
 func (s *Server) UpdateTodo(ctx context.Context, in *pb.UpdateTodoRequest) (*pb.UpdateTodoReply, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -308,7 +314,6 @@ func (s *Server) UpdateTodo(ctx context.Context, in *pb.UpdateTodoRequest) (*pb.
 	}
 
 	err := s.service.UpdateTodo(ctx, todoid[0], todo)
-
 	if err != nil {
 		s.log.Errorf("Could not update todo %v", err)
 		return nil, err
@@ -317,6 +322,7 @@ func (s *Server) UpdateTodo(ctx context.Context, in *pb.UpdateTodoRequest) (*pb.
 	return &pb.UpdateTodoReply{}, nil
 }
 
+// DeleteTodo delete todo handler.
 func (s *Server) DeleteTodo(ctx context.Context, in *pb.DeleteTodoRequest) (*pb.DeleteTodoReply, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {

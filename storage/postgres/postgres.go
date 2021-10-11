@@ -1,46 +1,50 @@
-package db
+package postgres
 
 import (
 	"context"
 	"fmt"
 	"reflect"
 	"time"
+
+	"todo/model"
 	"todo/storage"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	uuid "github.com/satori/go.uuid"
-	"todo/model"
 )
 
+// Postgres represents postgres object.
 type Postgres struct {
 	pool *pgxpool.Pool
 }
 
+// NewPostgresStorage returns Postgres struct.
 func NewPostgresStorage(p *pgxpool.Pool) *Postgres {
 	return &Postgres{pool: p}
 }
 
+// AddUser adds user to db.
 func (i *Postgres) AddUser(user model.User) (string, error) {
 	u := uuid.NewV4().String()
-	user.Id = u
+	user.ID = u
 
 	err := i.pool.QueryRow(context.Background(),
 		"INSERT INTO users (id, username, firstname, lastname, password, location) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-		user.Id, user.UserName, user.FirstName, user.LastName, user.Password, user.Location.String()).Scan(&user.Id)
-
+		user.ID, user.UserName, user.FirstName, user.LastName, user.Password, user.Location.String()).Scan(&user.ID)
 	if err != nil {
 		return "", fmt.Errorf("Unable to INSERT: %v", err)
 	}
 	return u, nil
 }
 
+// GetUser gets user from db.
 func (i *Postgres) GetUser(id string) (model.User, error) {
-	var user = model.User{}
+	user := model.User{}
 	var l string
 	err := i.pool.QueryRow(context.Background(),
 		"SELECT id, username, firstname, lastname, password, location FROM users WHERE id = $1",
-		id).Scan(&user.Id, &user.UserName, &user.FirstName, &user.LastName, &user.Password, &l)
+		id).Scan(&user.ID, &user.UserName, &user.FirstName, &user.LastName, &user.Password, &l)
 	if err == pgx.ErrNoRows {
 		return model.User{}, nil
 	}
@@ -53,7 +57,7 @@ func (i *Postgres) GetUser(id string) (model.User, error) {
 	if err != nil {
 		return model.User{}, fmt.Errorf("Unable to convert location: %v", err)
 	}
-	user.Location = model.CustomLocation{location}
+	user.Location = model.CustomLocation{Location: location}
 
 	if err != nil {
 		return model.User{}, fmt.Errorf("Unable to SELECT: %v", err)
@@ -61,13 +65,13 @@ func (i *Postgres) GetUser(id string) (model.User, error) {
 	return user, nil
 }
 
+// UpdateUser updates user in db.
 func (i *Postgres) UpdateUser(u model.User) error {
 	_, err := i.pool.Exec(context.Background(),
 		"UPDATE users SET username = $2, firstname = $3, lastname=$4, password=$5, location=$6 WHERE id = $1",
-		u.Id, u.UserName, u.FirstName, u.LastName, u.Password, u.Location.String())
-
+		u.ID, u.UserName, u.FirstName, u.LastName, u.Password, u.Location.String())
 	if err != nil {
-		return fmt.Errorf("Unable to UPDATE: %v\n", err)
+		return fmt.Errorf("Unable to update: %v", err)
 	}
 
 	/*if ct.RowsAffected() == 0 {
@@ -77,6 +81,7 @@ func (i *Postgres) UpdateUser(u model.User) error {
 	return nil
 }
 
+// DeleteUser deletes user in db.
 func (i *Postgres) DeleteUser(id string) error {
 	_, err := i.pool.Exec(context.Background(), "DELETE FROM users WHERE id = $1", id)
 	if err != nil {
@@ -89,6 +94,7 @@ func (i *Postgres) DeleteUser(id string) error {
 	return nil
 }
 
+// GetAllUsers gets all users from db.
 func (i *Postgres) GetAllUsers(filter storage.UserFilter) ([]model.User, error) {
 	arr := make([]model.User, 0)
 	query := "SELECT id, username, firstname, lastname, password, location FROM users WHERE 1=1"
@@ -112,8 +118,7 @@ func (i *Postgres) GetAllUsers(filter storage.UserFilter) ([]model.User, error) 
 	var l string
 	for rows.Next() {
 		user := model.User{}
-		err := rows.Scan(&user.Id, &user.UserName, &user.FirstName, &user.LastName, &user.Password, &l)
-
+		err := rows.Scan(&user.ID, &user.UserName, &user.FirstName, &user.LastName, &user.Password, &l)
 		if err != nil {
 			return arr, fmt.Errorf("Unable to SELECT: %v", err)
 		}
@@ -121,7 +126,7 @@ func (i *Postgres) GetAllUsers(filter storage.UserFilter) ([]model.User, error) 
 		if err != nil {
 			return arr, fmt.Errorf("Unable to convert location: %v", err)
 		}
-		user.Location = model.CustomLocation{location}
+		user.Location = model.CustomLocation{Location: location}
 
 		arr = append(arr, user)
 	}
@@ -129,12 +134,13 @@ func (i *Postgres) GetAllUsers(filter storage.UserFilter) ([]model.User, error) 
 	return arr, nil
 }
 
+// GetItem gets todo from db.
 func (i *Postgres) GetItem(id string) (model.TodoItem, error) {
-	var todo = model.TodoItem{}
+	todo := model.TodoItem{}
 
 	err := i.pool.QueryRow(context.Background(),
 		"SELECT id, name, date, status, userid FROM todos WHERE id = $1",
-		id).Scan(&todo.Id, &todo.Name, &todo.Date, &todo.Status, &todo.UserId)
+		id).Scan(&todo.ID, &todo.Name, &todo.Date, &todo.Status, &todo.UserID)
 
 	if err == pgx.ErrNoRows {
 		return model.TodoItem{}, nil
@@ -144,11 +150,11 @@ func (i *Postgres) GetItem(id string) (model.TodoItem, error) {
 		return model.TodoItem{}, fmt.Errorf("Unable to SELECT: %v", err)
 	}
 
-	var user = model.User{}
+	user := model.User{}
 	var l string
 	err = i.pool.QueryRow(context.Background(),
 		"SELECT id, username, firstname, lastname, password, location FROM users WHERE id = $1",
-		todo.UserId).Scan(&user.Id, &user.UserName, &user.FirstName, &user.LastName, &user.Password, &l)
+		todo.UserID).Scan(&user.ID, &user.UserName, &user.FirstName, &user.LastName, &user.Password, &l)
 
 	if err == pgx.ErrNoRows {
 		return model.TodoItem{}, nil
@@ -166,6 +172,7 @@ func (i *Postgres) GetItem(id string) (model.TodoItem, error) {
 	return todo, nil
 }
 
+// UpdateItem updates todo todo in db.
 func (i *Postgres) UpdateItem(item model.TodoItem) error {
 	if item.Date.IsZero() {
 		item.Date = time.Now().UTC()
@@ -175,14 +182,14 @@ func (i *Postgres) UpdateItem(item model.TodoItem) error {
 
 	_, err := i.pool.Exec(context.Background(),
 		"UPDATE todos SET name=$2, date=$3, status=$4, userid=$5 WHERE id = $1",
-		item.Id, item.Name, item.Date, item.Status, item.UserId)
-
+		item.ID, item.Name, item.Date, item.Status, item.UserID)
 	if err != nil {
-		return fmt.Errorf("Unable to UPDATE: %v\n", err)
+		return fmt.Errorf("Unable to update: %v", err)
 	}
 	return nil
 }
 
+// DeleteItem deletes todo in db.
 func (i *Postgres) DeleteItem(id string) error {
 	_, err := i.pool.Exec(context.Background(), "DELETE FROM todos WHERE id = $1", id)
 	if err != nil {
@@ -191,9 +198,10 @@ func (i *Postgres) DeleteItem(id string) error {
 	return nil
 }
 
+// AddItem adds todo to db.
 func (i *Postgres) AddItem(item model.TodoItem) (string, error) {
 	u := uuid.NewV4().String()
-	item.Id = u
+	item.ID = u
 	if item.Status == "" {
 		item.Status = "new"
 	}
@@ -206,22 +214,22 @@ func (i *Postgres) AddItem(item model.TodoItem) (string, error) {
 
 	err := i.pool.QueryRow(context.Background(),
 		"INSERT INTO todos (id, name, date, status, userid) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-		item.Id, item.Name, item.Date, item.Status, item.UserId).Scan(&item.Id)
-
+		item.ID, item.Name, item.Date, item.Status, item.UserID).Scan(&item.ID)
 	if err != nil {
 		return "", fmt.Errorf("Unable to INSERT: %v", err)
 	}
 	return u, nil
 }
 
+// GetAllItems gets all todos from db.
 func (i *Postgres) GetAllItems(filter storage.TodoFilter) ([]model.TodoItem, error) {
 	arr := make([]model.TodoItem, 0)
 
-	var user = model.User{}
+	user := model.User{}
 	var l string
 	err := i.pool.QueryRow(context.Background(),
 		"SELECT id, username, firstname, lastname, password, location FROM users WHERE id = $1",
-		filter.UserId).Scan(&user.Id, &user.UserName, &user.FirstName, &user.LastName, &user.Password, &l)
+		filter.UserID).Scan(&user.ID, &user.UserName, &user.FirstName, &user.LastName, &user.Password, &l)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to SELECT: %v", err)
 	}
@@ -233,8 +241,8 @@ func (i *Postgres) GetAllItems(filter storage.TodoFilter) ([]model.TodoItem, err
 
 	query := "SELECT id, name, date, status, userid FROM todos WHERE 1=1"
 
-	if len(filter.UserId) > 0 {
-		query += " and userid = '" + filter.UserId + "'"
+	if len(filter.UserID) > 0 {
+		query += " and userid = '" + filter.UserID + "'"
 	}
 	if len(filter.Status) > 0 {
 		query += " and status = '" + filter.Status + "'"
@@ -256,7 +264,7 @@ func (i *Postgres) GetAllItems(filter storage.TodoFilter) ([]model.TodoItem, err
 
 	for rows.Next() {
 		item := model.TodoItem{}
-		err := rows.Scan(&item.Id, &item.Name, &item.Date, &item.Status, &item.UserId)
+		err := rows.Scan(&item.ID, &item.Name, &item.Date, &item.Status, &item.UserID)
 		if err != nil {
 			return arr, fmt.Errorf("Unable to SELECT: %v", err)
 		}

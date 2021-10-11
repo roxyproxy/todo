@@ -8,11 +8,13 @@ import (
 	"net"
 	"net/http"
 	"os"
-	conf "todo/config"
 	"todo/logger"
 	"todo/server/grpcsrv"
 	"todo/server/httpsrv"
-	"todo/storage/db"
+	"todo/service"
+	"todo/storage/postgres"
+
+	conf "todo/config"
 )
 
 func main() {
@@ -31,29 +33,30 @@ func main() {
 
 	migrateDatabase(context.Background(), dbpool, log)
 
+	service := service.NewService(postgres.NewPostgresStorage(dbpool), config)
+
 	go func() {
 		lis, err := net.Listen("tcp", config.GrpcPort)
 		if err != nil {
 			log.Errorf("failed to listen: %v", err)
 		}
 		log.Infof("grpc server listening at %v", lis.Addr())
-		//server := grpcsrv.NewGrpcServer(inmemory.NewInMemoryStorage(), config, log)
-		server := grpcsrv.NewGrpcServer(db.NewPostgresStorage(dbpool), config, log)
+		// server := grpcsrv.NewGrpcServer(inmemory.NewInMemoryStorage(), config, log)
+		server := grpcsrv.NewGrpcServer(service, config, log)
 		err = server.Serve(lis)
 		if err != nil {
 			log.Errorf("grpc failed to serve: %v", err)
 		}
 	}()
 
-	//server := httpsrv.NewHttpServer(inmemory.NewInMemoryStorage(), config, log)
-	server := httpsrv.NewHttpServer(db.NewPostgresStorage(dbpool), config, log)
-	log.Infof("http server listening at %v", config.HttpPort)
+	// server := httpsrv.NewHTTPServer(inmemory.NewInMemoryStorage(), config, log)
+	server := httpsrv.NewHTTPServer(service, config, log)
+	log.Infof("http server listening at %v", config.HTTPPort)
 
-	err = http.ListenAndServe(config.HttpPort, server.Serve)
+	err = http.ListenAndServe(config.HTTPPort, server.Serve)
 	if err != nil {
-		log.Error("http failed to serve: %v", err)
+		log.Errorf("http failed to serve: %w", err)
 	}
-
 }
 
 func migrateDatabase(ctx context.Context, dbpool *pgxpool.Pool, log logger.Logger) {
@@ -68,7 +71,7 @@ func migrateDatabase(ctx context.Context, dbpool *pgxpool.Pool, log logger.Logge
 		log.Errorf("Unable to create a migrator: %v", err)
 	}
 
-	err = migrator.LoadMigrations("./migrations")
+	err = migrator.LoadMigrations("./storage/postgres/migrations")
 	if err != nil {
 		log.Errorf("Unable to load migrations: %v", err)
 	}
@@ -87,6 +90,6 @@ func migrateDatabase(ctx context.Context, dbpool *pgxpool.Pool, log logger.Logge
 	log.Infof("Migration done. Current schema version: %v", ver)
 }
 
-//mockgen -destination=server/mocks/mockstore.go -package=mockstore todo/storage Storage
-//docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d postgres
-//psql -U postgres
+// mockgen -destination=server/mocks/mockstore.go -package=mockstore todo/storage Storage
+// docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d postgres
+// psql -U postgres

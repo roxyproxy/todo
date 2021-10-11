@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+
 	"todo/model"
 )
 
+// Middleware is type of http.HandlerFunc.
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
+// Chain function to get all handler function into a chain.
 func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	for _, m := range middlewares {
 		f = m(f)
@@ -16,18 +19,18 @@ func Chain(f http.HandlerFunc, middlewares ...Middleware) http.HandlerFunc {
 	return f
 }
 
+// Authorize middleware.
 func (t *Server) Authorize() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			tokenString := getToken(r)
 			claims, err := t.service.ValidateToken(r.Context(), tokenString)
-
 			if err != nil {
 				t.handleError(fmt.Errorf("%q: %q: %w", "authentication failed.", err, model.ErrUnauthorized), w)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), model.KeyUserId("userid"), claims.UserId)
+			ctx := context.WithValue(r.Context(), model.KeyUserID("userid"), claims.UserID)
 			r = r.WithContext(ctx)
 
 			f(w, r)
@@ -35,6 +38,7 @@ func (t *Server) Authorize() Middleware {
 	}
 }
 
+// Log middleware.
 func (t *Server) Log() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +47,7 @@ func (t *Server) Log() Middleware {
 	}
 }
 
+// SetContentType middleware.
 func (t *Server) SetContentType() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {

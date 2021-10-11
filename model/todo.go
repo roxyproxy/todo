@@ -2,14 +2,16 @@ package model
 
 import "time"
 
+// TodoItem represents todo.
 type TodoItem struct {
-	Id     string    `json:"id"`
+	ID     string    `json:"id"`
 	Name   string    `json:"name"`
 	Date   time.Time `json:"date"`
 	Status string    `json:"status"`
-	UserId string    `json:"-"`
+	UserID string    `json:"-"`
 }
 
-type TodoId struct {
-	Id string `json:"id"`
+// TodoID represents todos id.
+type TodoID struct {
+	ID string `json:"id"`
 }

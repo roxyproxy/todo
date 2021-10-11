@@ -4,9 +4,10 @@ import (
 	"errors"
 )
 
+// ErrOperational errors model defined for application.
 var (
-	ErrOperational  = errors.New("Operational")
-	ErrBadRequest   = errors.New("Bad Request")
-	ErrUnauthorized = errors.New("Unauthorized")
-	ErrNotFound     = errors.New("Forbidden")
+	ErrOperational  = errors.New("operational")
+	ErrBadRequest   = errors.New("bad request")
+	ErrUnauthorized = errors.New("unauthorized")
+	ErrNotFound     = errors.New("forbidden")
 )

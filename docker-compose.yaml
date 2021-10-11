@@ -12,4 +12,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mysecretpassword
       POSTGRESS_DB: postgres
+      POSTGRES_HOST: postgres
+
+  todo:
+    build: .
+    depends_on:
+      - postgres
+    restart: on-failure
+
 

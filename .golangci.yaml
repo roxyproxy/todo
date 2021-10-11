@@ -200,7 +200,11 @@ linters-settings:
     # To check which checks are enabled run `GL_DEBUG=gocritic golangci-lint run`
     # By default list of stable checks is used.
     enabled-checks:
-      - rangeValCopy
+     # - rangeValCopy
+    - nestingreduce
+    - truncatecmp
+    - unnamedresult
+    - ruleguard
 
     # Which checks should be disabled; can't be combined with 'enabled-checks'; default is empty
     disabled-checks:
@@ -646,7 +650,11 @@ linters:
     #- govet
   enable-all: true
   disable:
-    #- maligned
+    - scopelint
+    - maligned
+    - golint
+    - interfacer
+
     #- prealloc
   presets:
     #- bugs

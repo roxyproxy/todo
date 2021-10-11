@@ -3,20 +3,19 @@ package grpcsrv
 import (
 	"context"
 	"fmt"
-	"github.com/golang/mock/gomock"
-	//"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/test/bufconn"
 	"io/ioutil"
 	"net"
 	"testing"
-	//"time"
+
 	"todo/api/v1/pb"
 	conf "todo/config"
 	"todo/logger"
-	//"todo/model"
 	mockstore "todo/server/mocks"
-	//"todo/service"
+	"todo/service"
+
+	"github.com/golang/mock/gomock"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 const bufSize = 1024 * 1024
@@ -27,11 +26,13 @@ func TestServerWithMock(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	c := conf.New()
 	m := mockstore.NewMockStorage(ctrl)
+	s := service.NewService(m, c)
 	log := logger.New(ioutil.Discard)
 	lis = bufconn.Listen(bufSize)
 
-	server := NewGrpcServer(m, conf.New(), log)
+	server := NewGrpcServer(s, c, log)
 	fmt.Printf("grpc server listening at %v", lis.Addr())
 	go func() {
 		if err := server.Serve(lis); err != nil {
@@ -39,8 +40,8 @@ func TestServerWithMock(t *testing.T) {
 		}
 	}()
 
-	//config := conf.New()
-	//service := service.NewService(m, config)
+	// config := conf.New()
+	// service := service.NewService(m, config)
 
 	/*
 		username := "Roxy"

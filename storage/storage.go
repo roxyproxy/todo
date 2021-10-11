@@ -5,6 +5,7 @@ import (
 	"todo/model"
 )
 
+// Storage represent interface for storage types.
 type Storage interface {
 	AddItem(item model.TodoItem) (id string, err error)
 	DeleteItem(id string) error
@@ -19,13 +20,15 @@ type Storage interface {
 	GetAllUsers(filter UserFilter) ([]model.User, error)
 }
 
+// TodoFilter represents filter struct for todos.
 type TodoFilter struct {
 	FromDate *time.Time // nil if empty ?
 	ToDate   *time.Time // nil if empty ?
 	Status   string
-	UserId   string
+	UserID   string
 }
 
+// UserFilter represents filter struct for users.
 type UserFilter struct {
 	UserName string
 }

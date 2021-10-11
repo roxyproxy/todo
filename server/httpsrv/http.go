@@ -3,29 +3,30 @@ package httpsrv
 import (
 	"errors"
 	"net/http"
+
 	"todo/config"
 	"todo/logger"
 	"todo/model"
 	"todo/service"
-	"todo/storage"
 
 	"github.com/go-chi/chi"
 )
 
+// Server represents server struct.
 type Server struct {
-	storage storage.Storage
 	Serve   http.Handler
 	config  *config.Config
 	log     logger.Logger
 	service service.Handlers
 }
 
-func NewHttpServer(storage storage.Storage, c *config.Config, l logger.Logger) *Server {
+// NewHTTPServer returns htts server object.
+func NewHTTPServer(service service.Handlers, c *config.Config, l logger.Logger) *Server {
 	t := new(Server)
-	//t.storage = storage
+	// t.storage = storage
 	t.config = c
 	t.log = l
-	t.service = service.NewService(storage, c)
+	t.service = service
 
 	s := chi.NewRouter()
 	s.Get("/todos", Chain(t.getAllItemsHandler, t.SetContentType(), t.Authorize(), t.Log()))
@@ -45,7 +46,7 @@ func NewHttpServer(storage storage.Storage, c *config.Config, l logger.Logger) *
 }
 
 func (t *Server) handleError(err error, w http.ResponseWriter) {
-	var status = http.StatusBadRequest
+	status := http.StatusBadRequest
 	var statusText string
 
 	t.log.Errorf("HTTP: %s", err)

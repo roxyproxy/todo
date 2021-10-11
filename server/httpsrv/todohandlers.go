@@ -3,11 +3,14 @@ package httpsrv
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi"
 	"net/http"
 	"time"
+
+	"github.com/go-chi/chi"
 	"todo/model"
 	"todo/storage"
+
+	"github.com/go-chi/chi"
 )
 
 // todos handlers.
@@ -60,7 +63,7 @@ func (t *Server) addItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	j := model.TodoId{Id: id}
+	j := model.TodoID{ID: id}
 	err = json.NewEncoder(w).Encode(j)
 	if err != nil {
 		t.handleError(fmt.Errorf("%q: %q: %w", "Error in add todo handler", err, model.ErrBadRequest), w)
@@ -75,7 +78,7 @@ func (t *Server) getItemHandler(w http.ResponseWriter, r *http.Request) {
 		t.handleError(fmt.Errorf("%q: %w", "Error in getItemsHandler.", err), w)
 		return
 	}
-	if todo.Id == "" {
+	if todo.ID == "" {
 		t.handleError(fmt.Errorf("%q: %w", "Error in getItemHandler.", model.ErrNotFound), w)
 		return
 	}

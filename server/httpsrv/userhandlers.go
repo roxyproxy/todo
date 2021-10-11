@@ -3,11 +3,14 @@ package httpsrv
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi"
 	"todo/model"
 	"todo/storage"
+
+	"github.com/go-chi/chi"
 )
 
 // users handlers.
@@ -18,7 +21,6 @@ func (t *Server) getAllUsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	users, err := t.service.GetUsers(r.Context(), filter)
-
 	if err != nil {
 		t.handleError(fmt.Errorf("%q: %w: ", "Error in getAllUsersHandler.", err), w)
 		return
@@ -49,7 +51,7 @@ func (t *Server) addUserHandler(w http.ResponseWriter, r *http.Request) {
 		t.handleError(fmt.Errorf("%q: %q: %w", "Error in add user handler", err, model.ErrBadRequest), w)
 		return
 	}
-	j := model.TodoId{Id: id}
+	j := model.TodoID{ID: id}
 	err = json.NewEncoder(w).Encode(j)
 	if err != nil {
 		t.handleError(fmt.Errorf("%q: %q: %w", "Error in add user handler", err, model.ErrBadRequest), w)
@@ -77,7 +79,6 @@ func (t *Server) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	err := t.service.DeleteUser(r.Context(), id)
 	if err != nil {
 		t.handleError(fmt.Errorf("%q: %w", "Error in delete user handler", err), w)
-		return
 	}
 }
 

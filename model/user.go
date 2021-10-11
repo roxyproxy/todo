@@ -8,8 +8,9 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
+// User represents users structure.
 type User struct {
-	Id        string         `json:"id"`
+	ID        string         `json:"id"`
 	UserName  string         `json:"username"`
 	FirstName string         `json:"firstname"`
 	LastName  string         `json:"lastname"`
@@ -17,6 +18,7 @@ type User struct {
 	Location  CustomLocation `json:"location"` // time.Location
 }
 
+// NewUser represents users structure with password.
 type NewUser struct {
 	UserName  string         `json:"username"`
 	FirstName string         `json:"firstname"`
@@ -25,26 +27,32 @@ type NewUser struct {
 	Location  CustomLocation `json:"location"` // time.Location
 }
 
+// Credentials represents users credentials.
 type Credentials struct {
 	UserName string `json:"username"`
 	Password string `json:"password"`
 }
 
+// Claims represents users claims in token string.
 type Claims struct {
-	UserId string `json:"userid"`
+	UserID string `json:"userid"`
 	jwt.StandardClaims
 }
 
+// Token represents token string.
 type Token struct {
 	TokenString string `json:"token"`
 }
 
-type KeyUserId string
+// KeyUserID represents userid in context.
+type KeyUserID string
 
+// CustomLocation used for Location json encodeing/decoding.
 type CustomLocation struct {
 	*time.Location
 }
 
+// UnmarshalJSON used to marshal/unmarshal CustomLocation.
 func (c *CustomLocation) UnmarshalJSON(b []byte) (err error) {
 	s := strings.Trim(string(b), `"`)
 	if s == "null" {
@@ -55,6 +63,7 @@ func (c *CustomLocation) UnmarshalJSON(b []byte) (err error) {
 	return
 }
 
+// MarshalJSON used to marshal/unmarshal CustomLocation.
 func (c CustomLocation) MarshalJSON() ([]byte, error) {
 	if c.Location.String() == "" {
 		return nil, nil
