@@ -9,8 +9,6 @@ import (
 	"github.com/go-chi/chi"
 	"todo/model"
 	"todo/storage"
-
-	"github.com/go-chi/chi"
 )
 
 // todos handlers.

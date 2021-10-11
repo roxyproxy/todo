@@ -20,4 +20,12 @@ services:
       - postgres
     restart: on-failure
 
+    environment:
+      DB_HOST: postgres11
+      DB_PORT: 5432:5432
+      DB_NAME: postgres12
+      DB_USER: postgres13
+      DB_PASS: mysecretpassword14
+
+
 
