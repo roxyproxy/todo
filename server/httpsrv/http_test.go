@@ -17,9 +17,6 @@ import (
 	mockstore "todo/server/mocks"
 	"todo/service"
 	"todo/storage"
-
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestServerWithMock(t *testing.T) {

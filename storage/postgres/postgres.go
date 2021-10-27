@@ -32,6 +32,7 @@ func (i *Postgres) AddUser(user model.User) (string, error) {
 	err := i.pool.QueryRow(context.Background(),
 		"INSERT INTO users (id, username, firstname, lastname, password, location) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
 		user.ID, user.UserName, user.FirstName, user.LastName, user.Password, user.Location.String()).Scan(&user.ID)
+
 	if err != nil {
 		return "", fmt.Errorf("Unable to INSERT: %v", err)
 	}

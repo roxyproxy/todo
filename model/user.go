@@ -10,21 +10,21 @@ import (
 
 // User represents users structure.
 type User struct {
-	ID        string         `json:"id"`
-	UserName  string         `json:"username"`
-	FirstName string         `json:"firstname"`
-	LastName  string         `json:"lastname"`
-	Password  string         `json:"-"`
-	Location  CustomLocation `json:"location"` // time.Location
+	ID        string         `json:"id" db:"id"`
+	UserName  string         `json:"username" db:"username"`
+	FirstName string         `json:"firstname" db:"firstname"`
+	LastName  string         `json:"lastname" db:"lastname"`
+	Password  string         `json:"-" db:"password"`
+	Location  CustomLocation `json:"location" db:"location"` // time.Location
 }
 
 // NewUser represents users structure with password.
 type NewUser struct {
-	UserName  string         `json:"username"`
-	FirstName string         `json:"firstname"`
-	LastName  string         `json:"lastname"`
-	Password  string         `json:"password"`
-	Location  CustomLocation `json:"location"` // time.Location
+	UserName  string         `json:"username" db:"username"`
+	FirstName string         `json:"firstname" db:"firstname"`
+	LastName  string         `json:"lastname" db:"lastname"`
+	Password  string         `json:"password" db:"password"`
+	Location  CustomLocation `json:"location" db:"location"` // time.Location
 }
 
 // Credentials represents users credentials.

@@ -2,6 +2,7 @@ package httpsrv
 
 import (
 	"errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 
 	"todo/config"
@@ -10,6 +11,7 @@ import (
 	"todo/service"
 
 	"github.com/go-chi/chi"
+	//"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Server represents server struct.
@@ -40,6 +42,8 @@ func NewHTTPServer(service service.Handlers, c *config.Config, l logger.Logger) 
 	s.Delete("/users/{userId}", Chain(t.deleteUserHandler, t.SetContentType(), t.Authorize(), t.Log()))
 	s.Put("/users/{userId}", Chain(t.updateUserHandler, t.SetContentType(), t.Authorize(), t.Log()))
 	s.Post("/user/login", Chain(t.loginUserHandler, t.SetContentType(), t.Log()))
+
+	s.Handle("/metrics", promhttp.Handler())
 
 	t.Serve = s
 	return t

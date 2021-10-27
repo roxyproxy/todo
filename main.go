@@ -5,10 +5,14 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/jackc/tern/migrate"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"todo/logger"
+	"todo/metrics"
 	"todo/server/grpcsrv"
 	"todo/server/httpsrv"
 	"todo/service"
@@ -16,6 +20,12 @@ import (
 
 	conf "todo/config"
 )
+
+func init() {
+	prometheus.Register(metrics.TotalRequests)
+	//prometheus.Register(metrics.ResponseStatus)
+	//prometheus.Register(metrics.HttpDuration)
+}
 
 func main() {
 	log := logger.New(os.Stderr)
@@ -26,7 +36,7 @@ func main() {
 
 	dbpool, err := pgxpool.Connect(context.Background(), config.DBUrl)
 	if err != nil {
-		log.Errorf("Unable to connection to database: %v\n", err)
+		log.Errorf("Unable to connect to database: %v\n", err)
 		os.Exit(1)
 	}
 	defer dbpool.Close()
@@ -41,7 +51,6 @@ func main() {
 			log.Errorf("failed to listen: %v", err)
 		}
 		log.Infof("grpc server listening at %v", lis.Addr())
-		// server := grpcsrv.NewGrpcServer(inmemory.NewInMemoryStorage(), config, log)
 		server := grpcsrv.NewGrpcServer(service, config, log)
 		err = server.Serve(lis)
 		if err != nil {
@@ -49,14 +58,39 @@ func main() {
 		}
 	}()
 
-	// server := httpsrv.NewHTTPServer(inmemory.NewInMemoryStorage(), config, log)
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		oscall := <-done
+		log.Infof("system call:%+v", oscall)
+		cancel()
+	}()
+
 	server := httpsrv.NewHTTPServer(service, config, log)
+	httpServer := &http.Server{
+		Addr:    config.HTTPPort,
+		Handler: server.Serve,
+	}
+
+	go func() {
+		err = httpServer.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Errorf("http failed to serve: %v", err)
+		}
+	}()
 	log.Infof("http server listening at %v", config.HTTPPort)
 
-	err = http.ListenAndServe(config.HTTPPort, server.Serve)
-	if err != nil {
-		log.Errorf("http failed to serve: %w", err)
+	<-ctx.Done()
+
+	if err = httpServer.Shutdown(context.Background()); err != nil {
+		log.Infof("http server Shutdown Failed:%+s", err)
 	}
+
+	log.Infof("http server exited properly")
+
 }
 
 func migrateDatabase(ctx context.Context, dbpool *pgxpool.Pool, log logger.Logger) {

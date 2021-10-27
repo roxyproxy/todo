@@ -10,8 +10,6 @@ type Config struct {
 	HTTPPort  string
 }
 
-// TODO create DB struct
-
 // New returns config object.
 func New() *Config {
 	return &Config{

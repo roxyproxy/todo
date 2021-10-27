@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"todo/metrics"
 	"todo/model"
 )
 
@@ -42,6 +43,8 @@ func (t *Server) Authorize() Middleware {
 func (t *Server) Log() Middleware {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			metrics.TotalRequests.WithLabelValues(r.URL.Path).Inc()
+
 			f(w, r)
 		}
 	}

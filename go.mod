@@ -8,12 +8,14 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/huandu/go-sqlbuilder v1.13.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jackc/pgx v0.0.0-20180217033919-55ca9db5d578 // indirect
 	github.com/jackc/pgx/v4 v4.13.0 // indirect
 	github.com/jackc/tern v1.12.5 // indirect
 	github.com/joho/godotenv v1.3.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
+	github.com/prometheus/client_golang v1.11.0 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/spf13/cobra v1.2.1 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
