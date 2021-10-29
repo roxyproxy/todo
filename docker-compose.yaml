@@ -16,6 +16,7 @@ services:
 
   todo:
     build: .
+    container_name: todo
     depends_on:
       - postgres
     restart: on-failure
